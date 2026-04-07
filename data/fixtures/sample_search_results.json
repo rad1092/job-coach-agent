@@ -1,0 +1,30 @@
+[
+  {
+    "title": "NexBridge Careers - Backend Platform Engineer",
+    "url": "https://careers.nexbridge.example/backend-platform-engineer",
+    "snippet": "NexBridge is hiring a backend platform engineer to build API services, data workflows, and internal tools for hiring products.",
+    "content": "Backend platform engineer role focused on Python, API design, SQL, cloud deployment, and collaboration with product and operations teams. Candidates should show project ownership, communication, and service improvement experience.",
+    "tags": ["backend", "platform", "engineer", "hiring", "api", "cloud"]
+  },
+  {
+    "title": "NexBridge Company Overview",
+    "url": "https://www.nexbridge.example/about",
+    "snippet": "NexBridge builds hiring workflow software for teams that need better recruiting operations and candidate communication.",
+    "content": "NexBridge is a software company focused on recruiting workflows, candidate communication, and analytics. The company emphasizes structured execution, cross-functional teamwork, and measurable product outcomes.",
+    "tags": ["company", "recruiting", "software", "culture", "team"]
+  },
+  {
+    "title": "RiverLoop Careers - Product Operations Analyst",
+    "url": "https://jobs.riverloop.example/product-operations-analyst",
+    "snippet": "RiverLoop is hiring a product operations analyst to support metrics reporting, issue tracking, and process improvement.",
+    "content": "Product operations analyst role with responsibilities across reporting, issue triage, stakeholder communication, and process documentation. Candidates should be comfortable with spreadsheets, dashboards, and operational follow-through.",
+    "tags": ["operations", "analyst", "metrics", "reporting", "process"]
+  },
+  {
+    "title": "RiverLoop Team and Culture",
+    "url": "https://www.riverloop.example/team",
+    "snippet": "RiverLoop highlights experimentation, cross-team communication, and practical customer problem solving.",
+    "content": "RiverLoop describes a collaborative environment with strong emphasis on clear ownership, customer context, and operational consistency.",
+    "tags": ["team", "culture", "customer", "operations"]
+  }
+]
