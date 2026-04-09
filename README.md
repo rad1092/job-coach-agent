@@ -75,7 +75,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke_real.ps1 -Industry "마
 
 - `.env`는 저장소에 올리지 않습니다.
 - 공개 웹 정보를 바탕으로 보강하지만, 실시간 완전 최신성을 보장하지 않습니다.
-- 메모/DB 레이어와 장기 세션 기억은 아직 `MVP+` 범위입니다.
+- 메모/DB 레이어와 장기 세션 기억은 아직 `MVP+` 범위입니다 - 완성보장이 어렵습니다
 
 ## 저장소 구성 참고
 
