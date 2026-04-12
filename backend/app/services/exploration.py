@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import uuid
 
-from backend.app.clients.page_fetcher import fetch_page_text
+from backend.app.clients.fetch_models import confidence_for_fetch_result, note_for_fetch_result
+from backend.app.clients.page_fetcher import fetch_page_content
 from backend.app.clients.search_client import SearchHit, build_search_client
 from backend.app.core.settings import Settings
+from backend.app.core.taxonomy import normalize_job_role
 from backend.app.schemas.api import CandidateCard, ExploreRequest, ExploreResponse, SourceCard
 
 
@@ -15,27 +17,52 @@ def _normalize_text(value: str | None) -> str | None:
     return compact or None
 
 
+def _build_query(*parts: str | None) -> str:
+    return " ".join(part for part in (_normalize_text(item) for item in parts) if part)
+
+
 def build_queries(request: ExploreRequest, retry_count: int = 0) -> list[str]:
     industry = _normalize_text(request.industry) or request.industry
     job_family = _normalize_text(request.job_family) or request.job_family
-    job_role = _normalize_text(request.job_role) or request.job_role
+    job_role = normalize_job_role(request.job_role)
+    experience_level = _normalize_text(request.experience_level)
     preferences = _normalize_text(request.preferences)
 
+    raw_queries: list[str] = []
     if retry_count > 0:
-        raw_queries = [
-            f"{job_family} {job_role} 채용",
-            f"{job_role} 관련 기업 채용",
-            f"{job_role} 직무 역량 준비",
-        ]
+        raw_queries.extend(
+            [
+                _build_query(industry, job_family, "채용"),
+                _build_query(job_family, "채용 공고"),
+                _build_query(industry, job_family, "관련 기업"),
+            ]
+        )
+        if job_role:
+            raw_queries.append(_build_query(industry, job_family, job_role, "채용"))
+        else:
+            raw_queries.append(_build_query(industry, job_family, "직무 역량"))
     else:
-        raw_queries = [
-            f"{industry} {job_family} {job_role} 채용",
-            f"{industry} {job_role} 기업 채용 공고",
-            f"{job_role} 직무 역량 {industry}",
-        ]
+        raw_queries.extend(
+            [
+                _build_query(industry, job_family, "채용"),
+                _build_query(industry, job_family, "기업 채용 공고"),
+            ]
+        )
+        if job_role:
+            raw_queries.extend(
+                [
+                    _build_query(industry, job_family, job_role, "채용"),
+                    _build_query(job_role, "직무 역량", industry),
+                ]
+            )
+        else:
+            raw_queries.append(_build_query(industry, job_family, "직무 역량"))
+
+    if experience_level:
+        raw_queries.append(_build_query(industry, job_family, experience_level, "채용"))
 
     if preferences:
-        raw_queries.append(f"{job_role} {preferences} 채용")
+        raw_queries.append(_build_query(industry, job_family, preferences, "채용"))
 
     deduped: list[str] = []
     seen: set[str] = set()
@@ -44,7 +71,7 @@ def build_queries(request: ExploreRequest, retry_count: int = 0) -> list[str]:
         if compact and compact not in seen:
             seen.add(compact)
             deduped.append(compact)
-    return deduped[:4]
+    return deduped[:6]
 
 
 def classify_source(hit: SearchHit) -> str:
@@ -59,10 +86,12 @@ def classify_source(hit: SearchHit) -> str:
 
 
 def build_relevance_reason(request: ExploreRequest, hit: SearchHit) -> str:
-    tokens = [request.industry, request.job_family, request.job_role]
+    tokens = [request.industry, request.job_family, normalize_job_role(request.job_role)]
     matched = [token for token in tokens if token and token.lower() in f"{hit.title} {hit.snippet}".lower()]
     if matched:
         return f"입력한 목표와 직접 맞닿는 키워드가 포함됨: {', '.join(matched)}"
+    if normalize_job_role(request.job_role):
+        return "입력한 산업·직군·직무와 연결되는 공고/기업 문맥을 보강할 수 있음"
     return "입력한 목표와 연결되는 공고/기업 문맥을 보강할 수 있음"
 
 
@@ -94,12 +123,11 @@ async def collect_candidates(
                 continue
             seen_urls.add(hit.url)
 
-            page_text = hit.content
-            if not page_text and settings.search_provider != "fixture":
-                try:
-                    page_text = await fetch_page_text(hit.url)
-                except Exception:
-                    notes.append(f"본문 수집에 실패해 검색 요약만 사용한 URL: {hit.url}")
+            fetch_result = await fetch_page_content(settings, hit.url, raw_content=hit.content)
+            page_text = fetch_result.text
+            fetch_note = note_for_fetch_result(fetch_result)
+            if fetch_note:
+                notes.append(fetch_note)
 
             source_type = classify_source(hit)
             summary = summarize_text(hit.snippet, page_text or "")
@@ -111,7 +139,7 @@ async def collect_candidates(
                     url=hit.url,
                     source_type=source_type,
                     claim=summary,
-                    confidence=0.8 if page_text else 0.6,
+                    confidence=confidence_for_fetch_result(fetch_result),
                 )
             )
 

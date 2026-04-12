@@ -39,10 +39,11 @@ def test_explore_returns_candidates(monkeypatch) -> None:
     response = client.post(
         "/explore",
         json={
-            "industry": "IT",
+            "industry": "IT/소프트웨어",
             "job_family": "개발",
-            "job_role": "백엔드 개발자",
-            "preferences": "주니어",
+            "job_role": "백엔드",
+            "experience_level": "신입",
+            "preferences": "근무형태: 원격",
         },
     )
 
@@ -51,6 +52,57 @@ def test_explore_returns_candidates(monkeypatch) -> None:
     assert payload["queries"]
     assert payload["source_cards"]
     assert payload["company_candidates"] or payload["posting_candidates"]
+
+
+def test_explore_accepts_null_job_role(monkeypatch) -> None:
+    _configure_fixture_mode(monkeypatch)
+    client = _build_client()
+
+    response = client.post(
+        "/explore",
+        json={
+            "industry": "IT/소프트웨어",
+            "job_family": "개발",
+            "job_role": None,
+            "experience_level": "경력무관",
+        },
+    )
+
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["queries"]
+    assert all("미정" not in query for query in payload["queries"])
+
+
+def test_explore_rejects_invalid_job_family(monkeypatch) -> None:
+    _configure_fixture_mode(monkeypatch)
+    client = _build_client()
+
+    response = client.post(
+        "/explore",
+        json={
+            "industry": "IT/소프트웨어",
+            "job_family": "콘텐츠",
+            "job_role": "백엔드",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_explore_rejects_missing_industry(monkeypatch) -> None:
+    _configure_fixture_mode(monkeypatch)
+    client = _build_client()
+
+    response = client.post(
+        "/explore",
+        json={
+            "job_family": "개발",
+            "job_role": "백엔드",
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_prepare_summary_returns_warning_when_selection_missing(monkeypatch) -> None:

@@ -1,6 +1,6 @@
 # 취업 코치형 에이전트
 
-희망 산업·직군·직무를 입력하면 관련 공고와 공개 정보를 탐색하고, 지원 준비 요약서와 실행 항목, 면접 자료를 한 흐름으로 정리하는 로컬 데모 프로젝트입니다.
+희망 산업·직군을 선택하고 직무를 좁혀가면 관련 공고와 공개 정보를 탐색하고, 지원 준비 요약서와 실행 항목, 면접 자료를 한 흐름으로 정리하는 로컬 데모 프로젝트입니다.
 
 ## 요구 사항
 
@@ -15,6 +15,12 @@
 
 ```powershell
 uv sync
+```
+
+브라우저 렌더링 기반 본문 수집까지 사용하려면 한 번만 브라우저 바이너리를 설치합니다.
+
+```powershell
+.venv\Scripts\python.exe -m playwright install chromium
 ```
 
 루트에 `.env` 파일을 만들고 값을 채웁니다. 예시는 [`.env.example`](./.env.example)에 있습니다.
@@ -56,15 +62,15 @@ http://localhost:8501
 powershell -ExecutionPolicy Bypass -File .\scripts\smoke_real.ps1
 ```
 
-직무를 바꿔서 확인하려면 인자를 넘깁니다.
+직무나 직군을 바꿔서 확인하려면 taxonomy 값 기준으로 인자를 넘깁니다.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke_real.ps1 -Industry "마케팅" -JobFamily "콘텐츠" -JobRole "콘텐츠 마케터"
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke_real.ps1 -Industry "콘텐츠/미디어" -JobFamily "마케팅" -JobRole "콘텐츠"
 ```
 
 ## 현재 기능 범위
 
-- 산업·직군·직무 입력
+- 산업·직군 선택과 직무 세분화 입력
 - 지원 대상 후보 탐색
 - 공고 우선 단일 선택
 - 지원 준비 요약서 생성

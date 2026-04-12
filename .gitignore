@@ -11,10 +11,7 @@ __pycache__/
 .agents/contracts/meta-stack-contracts.md
 
 data/runs/**
-
-runs/*.log
-runs/*.err.log
-runs/*.txt
+data/fetch_cache/**
 
 .DS_Store
 Thumbs.db

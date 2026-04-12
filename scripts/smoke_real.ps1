@@ -1,9 +1,9 @@
-param(
-    [string]$Industry = "IT",
+﻿param(
+    [string]$Industry = "IT/소프트웨어",
     [string]$JobFamily = "개발",
-    [string]$JobRole = "백엔드 개발자",
-    [string]$ExperienceLevel = "주니어",
-    [string]$Preferences = "데이터 처리와 API 설계 중심",
+    [string]$JobRole = "백엔드",
+    [string]$ExperienceLevel = "신입",
+    [string]$Preferences = "근무형태: 원격 / 지역: 수도권",
     [string]$UserBackground = "FastAPI와 데이터 처리 프로젝트 경험이 있습니다.",
     [string]$Notes = "API 설계와 협업 경험을 강조하고 싶습니다."
 )

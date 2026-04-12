@@ -11,7 +11,7 @@ class AgentRuntimeState(TypedDict, total=False):
     run_id: str
     industry: str
     job_family: str
-    job_role: str
+    job_role: str | None
     experience_level: str | None
     preferences: str | None
     user_background: str | None

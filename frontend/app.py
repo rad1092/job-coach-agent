@@ -6,6 +6,17 @@ import httpx
 import streamlit as st
 
 from backend.app.core.settings import get_settings
+from backend.app.core.taxonomy import (
+    CUSTOM_JOB_ROLE,
+    EXPERIENCE_LEVELS,
+    INDUSTRIES,
+    JOB_FAMILIES,
+    PREFERENCE_TAGS,
+    UNDECIDED_JOB_ROLE,
+    build_preferences_text,
+    compact_text,
+    job_roles_for_family,
+)
 
 st.set_page_config(
     page_title="취업 코치형 에이전트",
@@ -18,41 +29,122 @@ BACKEND_BASE_URL = SETTINGS.backend_base_url.rstrip("/")
 REQUEST_TIMEOUT = 60.0
 
 
-def _init_state() -> None:
-    defaults = {
-        "input_payload": {
-            "industry": "",
-            "job_family": "",
-            "job_role": "",
-            "experience_level": "",
-            "preferences": "",
-            "user_background": "",
-            "notes": "",
-        },
-        "explore_result": None,
-        "selected_target_index": 0,
-        "selected_target_source": "posting",
-        "prepare_summary_result": None,
-        "prep_artifacts_result": None,
+def _blank_draft_input() -> dict[str, Any]:
+    return {
+        "industry": None,
+        "job_family": None,
+        "job_role_select": None,
+        "custom_job_role": "",
+        "experience_level": None,
+        "preference_tags": [],
+        "preference_note": "",
+        "user_background": "",
+        "notes": "",
     }
-    for key, value in defaults.items():
+
+
+def _widget_state_from_draft(draft: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "draft_industry": draft.get("industry"),
+        "draft_job_family": draft.get("job_family"),
+        "draft_job_role_select": draft.get("job_role_select"),
+        "draft_custom_job_role": draft.get("custom_job_role", ""),
+        "draft_experience_level": draft.get("experience_level"),
+        "draft_preference_tags": list(draft.get("preference_tags", [])),
+        "draft_preference_note": draft.get("preference_note", ""),
+        "draft_user_background": draft.get("user_background", ""),
+        "draft_notes": draft.get("notes", ""),
+    }
+
+
+def _set_widget_state_from_draft(draft: dict[str, Any]) -> None:
+    for key, value in _widget_state_from_draft(draft).items():
+        st.session_state[key] = value
+
+
+def _capture_draft_input() -> dict[str, Any]:
+    return {
+        "industry": st.session_state.get("draft_industry"),
+        "job_family": st.session_state.get("draft_job_family"),
+        "job_role_select": st.session_state.get("draft_job_role_select"),
+        "custom_job_role": st.session_state.get("draft_custom_job_role", ""),
+        "experience_level": st.session_state.get("draft_experience_level"),
+        "preference_tags": list(st.session_state.get("draft_preference_tags", [])),
+        "preference_note": st.session_state.get("draft_preference_note", ""),
+        "user_background": st.session_state.get("draft_user_background", ""),
+        "notes": st.session_state.get("draft_notes", ""),
+    }
+
+
+def _sync_draft_state() -> None:
+    st.session_state["draft_input"] = _capture_draft_input()
+
+
+def _init_state() -> None:
+    st.session_state.setdefault("draft_input", _blank_draft_input())
+    st.session_state.setdefault("submitted_input", None)
+    st.session_state.setdefault("explore_result", None)
+    st.session_state.setdefault("selected_target_index", 0)
+    st.session_state.setdefault("selected_target_source", "posting")
+    st.session_state.setdefault("prepare_summary_result", None)
+    st.session_state.setdefault("prep_artifacts_result", None)
+
+    for key, value in _widget_state_from_draft(st.session_state["draft_input"]).items():
         st.session_state.setdefault(key, value)
 
 
-def _reset_flow() -> None:
-    for key in [
-        "explore_result",
-        "selected_target_index",
-        "selected_target_source",
-        "prepare_summary_result",
-        "prep_artifacts_result",
-    ]:
-        if key.endswith("_index"):
-            st.session_state[key] = 0
-        elif key == "selected_target_source":
-            st.session_state[key] = "posting"
-        else:
-            st.session_state[key] = None
+def _clear_selection_state() -> None:
+    st.session_state["selected_target_index"] = 0
+    st.session_state["selected_target_source"] = "posting"
+
+
+def _clear_explore_outputs(clear_submitted: bool = True) -> None:
+    if clear_submitted:
+        st.session_state["submitted_input"] = None
+    st.session_state["explore_result"] = None
+    st.session_state["prepare_summary_result"] = None
+    st.session_state["prep_artifacts_result"] = None
+    _clear_selection_state()
+
+
+def _clear_summary_outputs() -> None:
+    st.session_state["prepare_summary_result"] = None
+    st.session_state["prep_artifacts_result"] = None
+
+
+def _reset_all_state() -> None:
+    blank = _blank_draft_input()
+    st.session_state["draft_input"] = blank
+    st.session_state["submitted_input"] = None
+    _set_widget_state_from_draft(blank)
+    _clear_explore_outputs()
+
+
+def _on_industry_change() -> None:
+    st.session_state["draft_job_family"] = None
+    st.session_state["draft_job_role_select"] = None
+    st.session_state["draft_custom_job_role"] = ""
+    _clear_explore_outputs()
+
+
+def _on_job_family_change() -> None:
+    st.session_state["draft_job_role_select"] = None
+    st.session_state["draft_custom_job_role"] = ""
+    _clear_explore_outputs()
+
+
+def _on_job_role_select_change() -> None:
+    if st.session_state.get("draft_job_role_select") != CUSTOM_JOB_ROLE:
+        st.session_state["draft_custom_job_role"] = ""
+    _clear_explore_outputs()
+
+
+def _on_search_filter_change() -> None:
+    _clear_explore_outputs()
+
+
+def _on_summary_context_change() -> None:
+    _clear_summary_outputs()
 
 
 def _call_api(path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -71,6 +163,48 @@ def _call_api(path: str, payload: dict[str, Any] | None = None) -> dict[str, Any
     except httpx.RequestError as exc:
         st.error(f"백엔드 연결 오류: {exc}")
     return {}
+
+
+def _resolve_job_role(draft: dict[str, Any]) -> str | None:
+    selected_role = draft.get("job_role_select")
+    if selected_role in {None, UNDECIDED_JOB_ROLE}:
+        return None
+    if selected_role == CUSTOM_JOB_ROLE:
+        return compact_text(draft.get("custom_job_role"))
+    return selected_role
+
+
+def _build_search_preferences(draft: dict[str, Any]) -> str | None:
+    return build_preferences_text(
+        draft.get("preference_tags", []),
+        draft.get("preference_note"),
+    )
+
+
+def _build_explore_payload(draft: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
+    industry = draft.get("industry")
+    job_family = draft.get("job_family")
+    selected_role = draft.get("job_role_select")
+    job_role = _resolve_job_role(draft)
+
+    if not industry:
+        return None, "산업을 먼저 선택해 주세요."
+    if not job_family:
+        return None, "직군을 먼저 선택해 주세요."
+    if selected_role is None:
+        return None, "직무를 선택하거나 `미정`을 골라 주세요."
+    if selected_role == CUSTOM_JOB_ROLE and not job_role:
+        return None, "직접 입력 직무를 비워둘 수는 없습니다."
+
+    payload = {
+        "industry": industry,
+        "job_family": job_family,
+        "job_role": job_role,
+        "experience_level": draft.get("experience_level"),
+        "preferences": _build_search_preferences(draft),
+        "user_background": compact_text(draft.get("user_background")),
+    }
+    return payload, None
 
 
 def _candidate_options(candidates: list[dict[str, Any]]) -> list[dict[str, Any] | None]:
@@ -165,20 +299,14 @@ def _inject_styles() -> None:
             padding-top: 2rem;
             padding-bottom: 3rem;
         }
-        .hero-card, .panel-card {
+        .hero-card {
             border: 1px solid rgba(27, 55, 34, 0.12);
             border-radius: 20px;
             background: rgba(255, 255, 255, 0.82);
             box-shadow: 0 18px 40px rgba(38, 52, 37, 0.08);
             backdrop-filter: blur(8px);
-        }
-        .hero-card {
             padding: 1.5rem 1.6rem;
             margin-bottom: 1.25rem;
-        }
-        .panel-card {
-            padding: 1rem 1.1rem;
-            margin-bottom: 1rem;
         }
         .eyebrow {
             letter-spacing: 0.08em;
@@ -209,9 +337,9 @@ def _render_header() -> None:
         """
         <div class="hero-card">
             <div class="eyebrow">Job Coach Runtime</div>
-            <div class="hero-title">희망 산업·직군·직무에서 지원 준비 흐름까지</div>
+            <div class="hero-title">취업 코치</div>
             <div class="hero-copy">
-                입력한 목표를 기준으로 관련 기업과 공고를 탐색하고, 지원 준비 요약서와 실행 항목, 면접 자료를 한 흐름으로 정리합니다.
+                탐색은 산업·직군·직무를 기준으로 시작하고, 사용자 배경과 메모는 이후 요약서와 면접 자료에 반영합니다.
             </div>
         </div>
         """,
@@ -225,86 +353,139 @@ def _render_sidebar() -> None:
         st.write(f"- 백엔드: `{BACKEND_BASE_URL}`")
         st.write(f"- 검색: `{SETTINGS.search_provider}`")
         st.write(f"- 생성: `{SETTINGS.llm_provider}` / `{SETTINGS.openai_model}`")
-        if st.button("현재 흐름 초기화", use_container_width=True):
-            _reset_flow()
+        if st.button("전체 입력 초기화", use_container_width=True):
+            _reset_all_state()
             st.rerun()
 
 
+def _submitted_search_summary(submitted_input: dict[str, Any] | None) -> str | None:
+    if not submitted_input:
+        return None
+
+    parts = [
+        submitted_input.get("industry"),
+        submitted_input.get("job_family"),
+        submitted_input.get("job_role") or UNDECIDED_JOB_ROLE,
+    ]
+    if submitted_input.get("experience_level"):
+        parts.append(submitted_input["experience_level"])
+    if submitted_input.get("preferences"):
+        parts.append(submitted_input["preferences"])
+    return " / ".join(part for part in parts if part)
+
+
 def _render_input_stage() -> None:
-    st.markdown("## 1단계. 목표 입력")
-    with st.form("explore_form", clear_on_submit=False):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            industry = st.text_input("산업", value=st.session_state.input_payload["industry"])
-        with col2:
-            job_family = st.text_input("직군", value=st.session_state.input_payload["job_family"])
-        with col3:
-            job_role = st.text_input("직무", value=st.session_state.input_payload["job_role"])
+    st.markdown("## 목표를 입력해주세요")
 
-        col4, col5 = st.columns(2)
-        with col4:
-            experience_level = st.text_input(
-                "경력 수준",
-                value=st.session_state.input_payload["experience_level"],
-                placeholder="예: 신입, 주니어, 2년차",
-            )
-        with col5:
-            preferences = st.text_input(
-                "선호 조건",
-                value=st.session_state.input_payload["preferences"],
-                placeholder="예: 원격 근무, 데이터 중심, B2B",
-            )
+    current_draft = st.session_state["draft_input"]
+    submitted_summary = _submitted_search_summary(st.session_state.get("submitted_input"))
+    role_options = [None, *job_roles_for_family(current_draft.get("job_family"))]
 
-        user_background = st.text_area(
+    st.caption("산업과 직군은 필수입니다. 직무는 세부 선택 또는 `미정`/`직접 입력`으로 좁혀 주세요.")
+
+    left, right = st.columns(2)
+    with left:
+        st.selectbox(
+            "산업",
+            options=[None, *INDUSTRIES],
+            key="draft_industry",
+            format_func=lambda value: value or "산업을 선택하세요",
+            on_change=_on_industry_change,
+        )
+    with right:
+        st.selectbox(
+            "직군",
+            options=[None, *JOB_FAMILIES],
+            key="draft_job_family",
+            format_func=lambda value: value or "직군을 선택하세요",
+            on_change=_on_job_family_change,
+        )
+
+    st.selectbox(
+        "직무",
+        options=role_options,
+        key="draft_job_role_select",
+        format_func=lambda value: value or "직군을 먼저 선택한 뒤 직무를 선택하세요",
+        disabled=not current_draft.get("job_family"),
+        on_change=_on_job_role_select_change,
+    )
+
+    if st.session_state.get("draft_job_role_select") == CUSTOM_JOB_ROLE:
+        st.text_input(
+            "직접 입력 직무",
+            key="draft_custom_job_role",
+            placeholder="예: 개발자 플랫폼 엔지니어",
+            on_change=_on_search_filter_change,
+        )
+
+    filter_col, preference_col = st.columns((1, 2))
+    with filter_col:
+        st.radio(
+            "경력 수준",
+            options=[None, *EXPERIENCE_LEVELS],
+            key="draft_experience_level",
+            format_func=lambda value: value or "선택 안 함",
+            horizontal=True,
+            on_change=_on_search_filter_change,
+        )
+    with preference_col:
+        st.multiselect(
+            "선호 조건",
+            options=PREFERENCE_TAGS,
+            key="draft_preference_tags",
+            placeholder="근무 형태, 지역, 기업 규모 등을 고르세요",
+            on_change=_on_search_filter_change,
+        )
+
+    st.text_input(
+        "기타 선호",
+        key="draft_preference_note",
+        placeholder="예: B2B 서비스, 데이터 중심 조직",
+        on_change=_on_search_filter_change,
+    )
+
+    with st.expander("추가 정보", expanded=False):
+        st.text_area(
             "사용자 배경",
-            value=st.session_state.input_payload["user_background"],
+            key="draft_user_background",
             placeholder="프로젝트 경험, 강점, 부족하다고 느끼는 부분을 적습니다.",
             height=120,
+            on_change=_on_summary_context_change,
         )
-        notes = st.text_area(
+        st.text_area(
             "메모",
-            value=st.session_state.input_payload["notes"],
+            key="draft_notes",
             placeholder="이번 탐색에서 특별히 보고 싶은 조건이나 메모를 적습니다.",
             height=100,
+            on_change=_on_summary_context_change,
         )
 
-        submitted = st.form_submit_button("지원 대상 후보 탐색", use_container_width=True)
+    if submitted_summary:
+        st.caption(f"마지막 탐색 기준: {submitted_summary}")
 
-    if submitted:
-        payload = {
-            "industry": industry,
-            "job_family": job_family,
-            "job_role": job_role,
-            "experience_level": experience_level or None,
-            "preferences": preferences or None,
-            "user_background": user_background or None,
-        }
-        st.session_state.input_payload = {
-            "industry": industry,
-            "job_family": job_family,
-            "job_role": job_role,
-            "experience_level": experience_level,
-            "preferences": preferences,
-            "user_background": user_background,
-            "notes": notes,
-        }
-        st.session_state.prepare_summary_result = None
-        st.session_state.prep_artifacts_result = None
-        st.session_state.selected_target_index = 0
-        st.session_state.selected_target_source = "posting"
+    if st.button("지원 대상 후보 탐색", use_container_width=True):
+        _sync_draft_state()
+        draft = st.session_state["draft_input"]
+        payload, error = _build_explore_payload(draft)
+        if error:
+            st.error(error)
+            return
+
+        _clear_explore_outputs(clear_submitted=False)
+        st.session_state["submitted_input"] = payload
         with st.spinner("관련 공고와 참고 정보를 탐색하고 있습니다..."):
             result = _call_api("/explore", payload)
         if result:
-            st.session_state.explore_result = result
+            st.session_state["explore_result"] = result
             st.rerun()
 
 
 def _render_explore_stage() -> None:
-    explore_result = st.session_state.explore_result
+    explore_result = st.session_state.get("explore_result")
     if not explore_result:
         return
 
-    st.markdown("## 2단계. 지원 대상 후보 선택")
+    st.markdown("## 후보 탐색 결과")
     if explore_result.get("notes"):
         for note in explore_result["notes"]:
             st.warning(note)
@@ -316,9 +497,9 @@ def _render_explore_stage() -> None:
     company_candidates = explore_result.get("company_candidates", [])
     primary_candidates, primary_source, primary_label = _primary_candidates(explore_result)
 
-    if st.session_state.selected_target_source != primary_source:
-        st.session_state.selected_target_source = primary_source
-        st.session_state.selected_target_index = 0
+    if st.session_state["selected_target_source"] != primary_source:
+        st.session_state["selected_target_source"] = primary_source
+        st.session_state["selected_target_index"] = 0
 
     if not primary_candidates:
         st.warning("아직 선택할 수 있는 지원 대상 후보가 없습니다. 입력 조건을 조정해 다시 탐색해 보세요.")
@@ -330,14 +511,14 @@ def _render_explore_stage() -> None:
     if primary_source == "company":
         st.caption("공고 후보가 충분하지 않아 회사 기준으로 임시 선택합니다.")
 
-    st.session_state.selected_target_index = st.selectbox(
+    st.session_state["selected_target_index"] = st.selectbox(
         "지원 대상 후보 선택",
         options=list(range(len(primary_options))),
-        index=min(st.session_state.selected_target_index, len(primary_options) - 1),
+        index=min(st.session_state["selected_target_index"], len(primary_options) - 1),
         format_func=lambda idx: _candidate_label(primary_options[idx]),
         key="target_select",
     )
-    selected_target = _selected_candidate_from_index(primary_candidates, st.session_state.selected_target_index)
+    selected_target = _selected_candidate_from_index(primary_candidates, st.session_state["selected_target_index"])
     if selected_target:
         _render_candidate_card(selected_target)
 
@@ -346,26 +527,27 @@ def _render_explore_stage() -> None:
     _render_source_cards(explore_result.get("source_cards", []))
 
     if st.button("지원 준비 요약서 만들기", use_container_width=True):
+        draft = st.session_state["draft_input"]
         payload = {
             "run_id": explore_result.get("run_id"),
             "selected_target": _build_selected_candidate(selected_target),
-            "user_background": st.session_state.input_payload.get("user_background") or None,
-            "notes": st.session_state.input_payload.get("notes") or None,
+            "user_background": compact_text(draft.get("user_background")),
+            "notes": compact_text(draft.get("notes")),
         }
         with st.spinner("지원 준비 요약서를 정리하고 있습니다..."):
             result = _call_api("/prepare-summary", payload)
         if result:
-            st.session_state.prepare_summary_result = result
-            st.session_state.prep_artifacts_result = None
+            st.session_state["prepare_summary_result"] = result
+            st.session_state["prep_artifacts_result"] = None
             st.rerun()
 
 
 def _render_result_stage() -> None:
-    prepare_summary = st.session_state.prepare_summary_result
+    prepare_summary = st.session_state.get("prepare_summary_result")
     if not prepare_summary:
         return
 
-    st.markdown("## 3단계. 지원 준비 결과")
+    st.markdown("## 지원 준비")
     for warning in prepare_summary.get("warnings", []):
         st.warning(warning)
 
@@ -379,23 +561,24 @@ def _render_result_stage() -> None:
         _render_string_list("부족 역량과 보완 포인트", prepare_summary.get("skill_gaps", []))
 
     if st.button("실행 항목과 면접 자료 만들기", use_container_width=True):
-        explore_result = st.session_state.explore_result or {}
+        explore_result = st.session_state.get("explore_result") or {}
         primary_candidates, _, _ = _primary_candidates(explore_result)
-        selected_target = _selected_candidate_from_index(primary_candidates, st.session_state.selected_target_index)
+        selected_target = _selected_candidate_from_index(primary_candidates, st.session_state["selected_target_index"])
+        draft = st.session_state["draft_input"]
         payload = {
             "run_id": prepare_summary.get("run_id") or explore_result.get("run_id"),
             "selected_target": _build_selected_candidate(selected_target),
             "preparation_summary": prepare_summary.get("preparation_summary", ""),
-            "user_background": st.session_state.input_payload.get("user_background") or None,
-            "notes": st.session_state.input_payload.get("notes") or None,
+            "user_background": compact_text(draft.get("user_background")),
+            "notes": compact_text(draft.get("notes")),
         }
         with st.spinner("실행 항목과 면접 자료를 만들고 있습니다..."):
             result = _call_api("/prep-artifacts", payload)
         if result:
-            st.session_state.prep_artifacts_result = result
+            st.session_state["prep_artifacts_result"] = result
             st.rerun()
 
-    artifacts = st.session_state.prep_artifacts_result
+    artifacts = st.session_state.get("prep_artifacts_result")
     if not artifacts:
         return
 
@@ -412,6 +595,7 @@ def _render_result_stage() -> None:
 
 def main() -> None:
     _init_state()
+    _sync_draft_state()
     _inject_styles()
     _render_sidebar()
     _render_header()

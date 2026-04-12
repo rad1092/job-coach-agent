@@ -47,7 +47,7 @@ async def run_explore_graph(settings: Settings, request: ExploreRequest) -> Expl
             "phase": "normalized",
             "industry": _compact(state.get("industry")) or "",
             "job_family": _compact(state.get("job_family")) or "",
-            "job_role": _compact(state.get("job_role")) or "",
+            "job_role": _compact(state.get("job_role")),
             "experience_level": _compact(state.get("experience_level")),
             "preferences": _compact(state.get("preferences")),
             "user_background": _compact(state.get("user_background")),
@@ -57,7 +57,7 @@ async def run_explore_graph(settings: Settings, request: ExploreRequest) -> Expl
         normalized_request = ExploreRequest(
             industry=state["industry"],
             job_family=state["job_family"],
-            job_role=state["job_role"],
+            job_role=state.get("job_role"),
             experience_level=state.get("experience_level"),
             preferences=state.get("preferences"),
             user_background=state.get("user_background"),
@@ -71,7 +71,7 @@ async def run_explore_graph(settings: Settings, request: ExploreRequest) -> Expl
         normalized_request = ExploreRequest(
             industry=state["industry"],
             job_family=state["job_family"],
-            job_role=state["job_role"],
+            job_role=state.get("job_role"),
             experience_level=state.get("experience_level"),
             preferences=state.get("preferences"),
             user_background=state.get("user_background"),
