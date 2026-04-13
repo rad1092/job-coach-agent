@@ -8,14 +8,22 @@ from langgraph.graph import END, START, StateGraph
 from backend.app.core.settings import Settings
 from backend.app.runtime.state import AgentRuntimeState
 from backend.app.schemas.api import (
+    CandidateCard,
     ExploreRequest,
     ExploreResponse,
     PrepArtifactsRequest,
     PrepArtifactsResponse,
     PrepareSummaryRequest,
     PrepareSummaryResponse,
+    SourceCard,
 )
-from backend.app.services.exploration import build_queries, collect_candidates
+from backend.app.services.exploration import (
+    MAX_COMPANY_CANDIDATES,
+    MAX_POSTING_CANDIDATES,
+    MAX_SOURCE_CARDS,
+    build_queries,
+    collect_candidates,
+)
 from backend.app.services.preparation import (
     build_prep_artifacts,
     build_prepare_summary,
@@ -39,6 +47,26 @@ def _merge_messages(*parts: list[str]) -> list[str]:
                 seen.add(item)
                 merged.append(item)
     return merged
+
+
+def _merge_candidate_cards(*parts: list[CandidateCard]) -> list[CandidateCard]:
+    merged: dict[str, CandidateCard] = {}
+    for items in parts:
+        for item in items:
+            current = merged.get(item.source_url)
+            if current is None or item.confidence > current.confidence:
+                merged[item.source_url] = item
+    return sorted(merged.values(), key=lambda item: (-item.confidence, item.name))
+
+
+def _merge_source_cards(*parts: list[SourceCard]) -> list[SourceCard]:
+    merged: dict[str, SourceCard] = {}
+    for items in parts:
+        for item in items:
+            current = merged.get(item.url)
+            if current is None or item.confidence > current.confidence:
+                merged[item.url] = item
+    return sorted(merged.values(), key=lambda item: (-item.confidence, item.title))
 
 
 async def run_explore_graph(settings: Settings, request: ExploreRequest) -> ExploreResponse:
@@ -76,12 +104,26 @@ async def run_explore_graph(settings: Settings, request: ExploreRequest) -> Expl
             preferences=state.get("preferences"),
             user_background=state.get("user_background"),
         )
-        collected = await collect_candidates(settings, normalized_request, state.get("queries", []))
+        collected = await collect_candidates(
+            settings,
+            normalized_request,
+            state.get("queries", []),
+            retry_count=state.get("retry_count", 0),
+        )
         return {
             "phase": "evidence_collected",
-            "company_candidates": cast(list, collected["company_candidates"]),
-            "posting_candidates": cast(list, collected["posting_candidates"]),
-            "source_cards": cast(list, collected["source_cards"]),
+            "company_candidates": _merge_candidate_cards(
+                cast(list[CandidateCard], state.get("company_candidates", [])),
+                cast(list[CandidateCard], collected["company_candidates"]),
+            )[:MAX_COMPANY_CANDIDATES],
+            "posting_candidates": _merge_candidate_cards(
+                cast(list[CandidateCard], state.get("posting_candidates", [])),
+                cast(list[CandidateCard], collected["posting_candidates"]),
+            )[:MAX_POSTING_CANDIDATES],
+            "source_cards": _merge_source_cards(
+                cast(list[SourceCard], state.get("source_cards", [])),
+                cast(list[SourceCard], collected["source_cards"]),
+            )[:MAX_SOURCE_CARDS],
             "notes": _merge_messages(state.get("notes", []), cast(list[str], collected["notes"])),
         }
 
@@ -95,11 +137,15 @@ async def run_explore_graph(settings: Settings, request: ExploreRequest) -> Expl
         next_action: Literal["retry_search", "finalize"] = "finalize"
 
         if company_count == 0 and posting_count == 0 and retry_count < max_retries:
-            notes.append("후보가 충분하지 않아 검색 범위를 넓혀 한 번 더 탐색합니다.")
+            notes.append("조건에 맞는 공고가 부족해 확장 채용 보드까지 넓혀 다시 탐색합니다.")
+            next_action = "retry_search"
+            retry_count += 1
+        elif posting_count < MAX_POSTING_CANDIDATES and retry_count < max_retries:
+            notes.append(f"후보를 {MAX_POSTING_CANDIDATES}건 가까이 확보하기 위해 확장 채용 보드까지 다시 탐색합니다.")
             next_action = "retry_search"
             retry_count += 1
         elif source_count < 2 and retry_count < max_retries:
-            notes.append("근거가 부족해 검색을 한 번 더 시도합니다.")
+            notes.append("탐색 근거가 부족해 한 번 더 검색합니다.")
             next_action = "retry_search"
             retry_count += 1
 
@@ -149,7 +195,7 @@ async def run_explore_graph(settings: Settings, request: ExploreRequest) -> Expl
         "notes": [],
         "warnings": [],
         "retry_count": 0,
-        "max_retries": 1,
+        "max_retries": 2,
         "next_action": "continue",
     }
     result = cast(AgentRuntimeState, await graph.ainvoke(initial_state))
@@ -316,7 +362,7 @@ async def run_prep_artifacts_graph(settings: Settings, request: PrepArtifactsReq
         if needs_revision and retry_count < state.get("max_retries", 1):
             retry_count += 1
             next_action = "regenerate_artifacts"
-            warnings = _merge_messages(warnings, ["산출물이 너무 일반적이어서 한 번 더 생성합니다."])
+            warnings = _merge_messages(warnings, ["산출물이 지나치게 일반적이어서 한 번 더 다듬습니다."])
         return {
             "phase": "artifacts_reviewed",
             "warnings": _merge_messages(state.get("warnings", []), warnings),

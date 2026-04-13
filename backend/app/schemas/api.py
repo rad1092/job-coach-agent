@@ -18,6 +18,7 @@ class CandidateCard(BaseModel):
     summary: str
     why_relevant: str
     source_url: str
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class SourceCard(BaseModel):
@@ -73,3 +74,33 @@ class PrepArtifactsResponse(BaseModel):
     interview_questions: list[str]
     answer_frames: list[str]
     warnings: list[str] = Field(default_factory=list)
+
+
+class CoachChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: str
+    preparation_tips: list[str] = Field(default_factory=list)
+    suggested_questions: list[str] = Field(default_factory=list)
+
+
+class CoachChatRequest(BaseModel):
+    run_id: str = Field(..., min_length=1)
+    question: str = Field(..., min_length=1)
+    selected_target: SelectedCandidate | None = None
+    user_background: str | None = None
+    notes: str | None = None
+
+
+class CoachChatResponse(BaseModel):
+    run_id: str
+    answer: str
+    preparation_tips: list[str]
+    suggested_questions: list[str]
+    messages: list[CoachChatMessage]
+    warnings: list[str] = Field(default_factory=list)
+
+
+class CoachChatHistoryResponse(BaseModel):
+    run_id: str
+    messages: list[CoachChatMessage]
