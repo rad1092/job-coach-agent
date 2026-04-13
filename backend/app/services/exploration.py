@@ -4,7 +4,7 @@ import uuid
 from urllib.parse import urlparse
 
 from backend.app.clients.page_fetcher import fetch_page_text
-from backend.app.clients.search_client import SearchHit, build_search_client
+from backend.app.clients.search_client import FixtureSearchClient, SearchHit, build_search_client
 from backend.app.core.settings import Settings
 from backend.app.core.taxonomy import (
     BLOCKED_TEXT_KEYWORDS,
@@ -181,23 +181,48 @@ async def collect_candidates(
     queries: list[str],
     retry_count: int = 0,
 ) -> dict[str, list[CandidateCard] | list[SourceCard] | list[str]]:
-    client = build_search_client(settings)
+    def _ensure_fixture_fallback_note(existing_notes: list[str]) -> None:
+        note = "실시간 검색 연결에 문제가 있어 로컬 샘플 결과로 대체했습니다."
+        if note not in existing_notes:
+            existing_notes.append(note)
+
+    notes: list[str] = []
+    try:
+        client = build_search_client(settings)
+    except Exception:
+        client = FixtureSearchClient(settings.data_dir)
+        if settings.search_provider != "fixture":
+            _ensure_fixture_fallback_note(notes)
+
     allowed_domains = job_board_domains_for_retry(retry_count)
     seen_urls: set[str] = set()
     source_cards: list[SourceCard] = []
     company_candidates: list[CandidateCard] = []
     posting_candidates: list[CandidateCard] = []
-    notes: list[str] = []
     search_max_results = 30 if settings.search_provider == "fixture" else 20
 
     for query in queries:
-        hits = client.search(
-            query,
-            max_results=search_max_results,
-            include_domains=allowed_domains,
-            exclude_domains=list(EXCLUDED_SEARCH_DOMAINS),
-            country="south korea",
-        )
+        try:
+            hits = client.search(
+                query,
+                max_results=search_max_results,
+                include_domains=allowed_domains,
+                exclude_domains=list(EXCLUDED_SEARCH_DOMAINS),
+                country="south korea",
+            )
+        except Exception:
+            if not isinstance(client, FixtureSearchClient):
+                client = FixtureSearchClient(settings.data_dir)
+                _ensure_fixture_fallback_note(notes)
+                hits = client.search(
+                    query,
+                    max_results=search_max_results,
+                    include_domains=allowed_domains,
+                    exclude_domains=list(EXCLUDED_SEARCH_DOMAINS),
+                    country="south korea",
+                )
+            else:
+                raise
         for hit in hits:
             if hit.url in seen_urls or _should_skip_hit(hit, allowed_domains):
                 continue

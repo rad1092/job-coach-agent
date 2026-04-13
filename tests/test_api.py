@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import shutil
 import uuid
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -76,6 +78,56 @@ def test_explore_returns_up_to_twenty_seven_direct_posting_candidates(monkeypatc
         payload["posting_candidates"][index]["confidence"] >= payload["posting_candidates"][index + 1]["confidence"]
         for index in range(len(payload["posting_candidates"]) - 1)
     )
+
+
+def test_explore_clears_previous_run_storage(monkeypatch) -> None:
+    _configure_fixture_mode(monkeypatch)
+    data_dir = Path("data") / f"test-reset-{uuid.uuid4().hex}"
+    if data_dir.exists():
+        shutil.rmtree(data_dir)
+    fixture_dir = data_dir / "fixtures"
+    fixture_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(Path("data") / "fixtures" / "sample_search_results.json", fixture_dir / "sample_search_results.json")
+
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    get_settings.cache_clear()
+    client = _build_client()
+
+    old_run_id = f"chat-run-{uuid.uuid4().hex}"
+    chat_response = client.post(
+        "/coach-chat",
+        json={
+            "run_id": old_run_id,
+            "question": "이전 실행 질문입니다.",
+            "selected_target": {
+                "name": "예시 백엔드 개발자 공고",
+                "kind": "posting",
+                "summary": "Python API와 데이터 처리 경험을 요구합니다.",
+                "source_url": "https://example.com/jobs/1",
+            },
+            "user_background": "FastAPI와 데이터 처리 프로젝트 경험이 있습니다.",
+            "notes": "이전 실행 메모입니다.",
+        },
+    )
+    assert chat_response.status_code == 200
+    assert client.get(f"/coach-chat/history/{old_run_id}").json()["messages"]
+
+    explore_response = client.post(
+        "/explore",
+        json={
+            "industry": "IT·플랫폼",
+            "job_family": "개발",
+            "job_role": "백엔드 개발자",
+            "experience_level": "주니어(1~3년)",
+            "preferences": "원격·하이브리드, 데이터 중심 문화",
+        },
+    )
+
+    assert explore_response.status_code == 200
+    new_run_id = explore_response.json()["run_id"]
+    assert client.get(f"/coach-chat/history/{old_run_id}").json()["messages"] == []
+    assert (data_dir / "job_coach.db").exists()
+    assert (data_dir / "runs" / new_run_id / "explore.json").exists()
 
 
 def test_prepare_summary_returns_warning_when_selection_missing(monkeypatch) -> None:
