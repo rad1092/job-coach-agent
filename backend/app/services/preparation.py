@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from typing import Any
 
 from backend.app.clients.llm_client import build_llm_client
@@ -42,7 +43,165 @@ def _coerce_string_list(value: Any, *, limit: int) -> list[str]:
     return items
 
 
+ANSWER_FRAME_LABEL_ORDER = (
+    "핵심 메시지",
+    "근거 경험",
+    "공고 요구사항",
+    "내 경험",
+    "상황",
+    "문제",
+    "문제 정의",
+    "현재 상태",
+    "역할",
+    "행동",
+    "접근 방식",
+    "보완 행동",
+    "진행 상황",
+    "결과",
+    "성과/수치",
+    "배운 점",
+    "직무 연결",
+    "실무 연결",
+    "보완 계획",
+    "재사용 포인트",
+    "마무리",
+)
+
+ANSWER_FRAME_LABEL_ALIASES = {
+    "key message": "핵심 메시지",
+    "key_message": "핵심 메시지",
+    "main message": "핵심 메시지",
+    "main_message": "핵심 메시지",
+    "message": "핵심 메시지",
+    "evidence": "근거 경험",
+    "experience": "근거 경험",
+    "requirement": "공고 요구사항",
+    "requirements": "공고 요구사항",
+    "job requirement": "공고 요구사항",
+    "job_requirements": "공고 요구사항",
+    "my experience": "내 경험",
+    "my_experience": "내 경험",
+    "problem": "문제",
+    "problem definition": "문제 정의",
+    "problem_definition": "문제 정의",
+    "current status": "현재 상태",
+    "current_status": "현재 상태",
+    "role": "역할",
+    "action": "행동",
+    "actions": "행동",
+    "approach": "접근 방식",
+    "plan": "보완 계획",
+    "improvement plan": "보완 계획",
+    "improvement_plan": "보완 계획",
+    "result": "결과",
+    "results": "결과",
+    "metrics": "성과/수치",
+    "metric": "성과/수치",
+    "achievement": "성과/수치",
+    "achievements": "성과/수치",
+    "role fit": "직무 연결",
+    "role_fit": "직무 연결",
+    "job fit": "직무 연결",
+    "job_fit": "직무 연결",
+    "job connection": "직무 연결",
+    "job_connection": "직무 연결",
+    "closing": "마무리",
+}
+
+
+def _normalize_answer_frame_label(value: Any) -> str:
+    label = _compact_text(str(value)).strip().strip(":")
+    label = label.strip("'\"")
+    alias_key = label.casefold().replace("-", " ").replace("_", " ")
+    return ANSWER_FRAME_LABEL_ALIASES.get(alias_key, label)
+
+
+def _answer_frame_sort_key(label: str) -> int:
+    try:
+        return ANSWER_FRAME_LABEL_ORDER.index(label)
+    except ValueError:
+        return len(ANSWER_FRAME_LABEL_ORDER)
+
+
+def _coerce_answer_frame_text(raw_item: Any) -> str:
+    if isinstance(raw_item, dict):
+        pairs: list[tuple[str, str]] = []
+        for key, value in raw_item.items():
+            label = _normalize_answer_frame_label(key)
+            if isinstance(value, (dict, list)):
+                content = _coerce_answer_frame_text(value)
+            else:
+                content = _compact_text(str(value))
+            if not content:
+                continue
+            pairs.append((label, content))
+        pairs.sort(key=lambda item: _answer_frame_sort_key(item[0]))
+        return " | ".join(f"{label}: {content}" for label, content in pairs)
+
+    if isinstance(raw_item, list):
+        blocks = [_coerce_answer_frame_text(item) for item in raw_item]
+        return " | ".join(block for block in blocks if block)
+
+    text = _compact_text(str(raw_item))
+    if not text:
+        return ""
+
+    stripped = text.strip()
+    if stripped[:1] in "{[":
+        try:
+            parsed = ast.literal_eval(stripped)
+        except (SyntaxError, ValueError):
+            parsed = None
+        if isinstance(parsed, (dict, list)):
+            return _coerce_answer_frame_text(parsed)
+
+    cleaned = (
+        text.replace("{", "")
+        .replace("}", "")
+        .replace("[", "")
+        .replace("]", "")
+        .replace('"', "")
+        .replace("'", "")
+    )
+    return _compact_text(cleaned)
+
+
+def _coerce_answer_frame_list(value: Any, *, limit: int) -> list[str]:
+    if not isinstance(value, list):
+        return []
+
+    items: list[str] = []
+    seen: set[str] = set()
+    for raw_item in value:
+        text = _coerce_answer_frame_text(raw_item)
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        items.append(text)
+        if len(items) >= limit:
+            break
+    return items
+
+
 def _coerce_gap_text(raw_item: Any) -> str:
+    if isinstance(raw_item, str):
+        compact = _compact_text(raw_item)
+        if compact[:1] in "{[":
+            try:
+                parsed = ast.literal_eval(compact)
+            except (SyntaxError, ValueError):
+                parsed = None
+            if isinstance(parsed, dict):
+                return _coerce_gap_text(parsed)
+        raw_item = (
+            compact.replace("{", "")
+            .replace("}", "")
+            .replace("[", "")
+            .replace("]", "")
+            .replace('"', "")
+            .replace("'", "")
+        )
+
     if isinstance(raw_item, dict):
         weakness = " ".join(
             str(
@@ -104,7 +263,7 @@ def _clip_text(value: str | None, limit: int = 90) -> str:
 
 
 def _is_useful_self_intro_draft(text: str) -> bool:
-    return len(_compact_text(text)) >= 90
+    return len(_compact_text(text)) >= 240
 
 
 def _fallback_self_intro_draft(request: PrepArtifactsRequest) -> str:
@@ -119,10 +278,12 @@ def _fallback_self_intro_draft(request: PrepArtifactsRequest) -> str:
         focus = "직무 적합성과 빠른 기여 가능성을 설득력 있게 보여주는 것"
 
     return (
-        f"안녕하세요. 저는 {background}을 바탕으로 {target_name}에 지원한 지원자입니다. "
-        f"특히 {target_summary}와 맞닿는 업무에서 문제를 빠르게 파악하고 실행 가능한 결과로 연결해 온 점이 제 강점입니다. "
-        f"이번 지원에서는 {focus}를 중심으로 제가 가진 직무 적합성과 협업 역량을 분명하게 보여드리고 싶습니다. "
-        f"입사 후에는 빠르게 업무 맥락을 이해하고, 안정적인 실행력으로 팀의 성과에 기여하겠습니다."
+        f"저는 {background}을 바탕으로 {target_name}에 지원했습니다. "
+        f"특히 {target_summary}와 맞닿는 과제에서 목표를 다시 정의하고, 필요한 기능과 데이터를 연결해 실제 결과로 이어 온 경험이 있습니다. "
+        "이전 프로젝트에서는 단순히 맡은 일을 처리하는 데 그치지 않고 우선순위를 정리하고 협업 포인트를 맞추며, "
+        "사용자 반응이나 운영 효율처럼 결과를 설명할 수 있는 지점까지 끝까지 챙겨 왔습니다. "
+        f"그래서 이번 지원에서도 {focus}를 중심으로, 제가 이미 보여 준 실행력과 학습 속도가 해당 직무에서 빠르게 성과로 이어질 수 있다는 점을 말씀드리고 싶습니다. "
+        "입사 후에는 업무 맥락을 빠르게 익히고 작은 과제라도 근거 있는 판단과 안정적인 실행으로 완성해, 팀이 신뢰할 수 있는 구성원으로 기여하겠습니다."
     )
 
 
@@ -132,67 +293,67 @@ def _question_specific_frame(question: str, target_name: str) -> str:
 
     if any(keyword in lowered for keyword in ["지원 동기", "지원동기", "선택한 이유", "왜 지원", "왜 이 직무"]):
         return (
-            f"핵심 메시지 -> 왜 {target_name}와 이 직무를 선택했는지 한 문장으로 제시 | "
-            "근거 경험 -> 관련 프로젝트나 실무 경험 1개를 바로 연결 | "
-            "성과/수치 -> 결과나 개선 지표를 짧게 제시 | "
-            "직무 연결 -> 입사 후 바로 기여할 업무를 언급 | "
-            f"마무리 -> {base}"
+            f"핵심 메시지: 왜 {target_name}와 이 직무를 선택했는지 한 문장으로 제시 | "
+            "근거 경험: 관련 프로젝트나 실무 경험 1개를 바로 연결 | "
+            "성과/수치: 결과나 개선 지표를 짧게 제시 | "
+            "직무 연결: 입사 후 바로 기여할 업무를 언급 | "
+            f"마무리: {base}"
         )
 
     if any(keyword in lowered for keyword in ["강점", "적합", "요구사항", "역량", "잘 맞", "뽑아야 하는 이유"]):
         return (
-            "핵심 메시지 -> 질문에서 묻는 역량 중 내가 가장 강한 포인트를 먼저 제시 | "
-            "공고 요구사항 -> 어떤 역량을 기준으로 답하는지 짚기 | "
-            "내 경험 -> 같은 역량을 보여준 사례 1개 설명 | "
-            "성과/수치 -> 결과, 개선폭, 재현 가능성 제시 | "
-            f"직무 연결 -> 해당 역량이 {target_name} 업무에 어떻게 바로 쓰이는지 정리"
+            "핵심 메시지: 질문에서 묻는 역량 중 내가 가장 강한 포인트를 먼저 제시 | "
+            "공고 요구사항: 어떤 역량을 기준으로 답하는지 짚기 | "
+            "내 경험: 같은 역량을 보여준 사례 1개 설명 | "
+            "성과/수치: 결과, 개선폭, 재현 가능성 제시 | "
+            f"직무 연결: 해당 역량이 {target_name} 업무에 어떻게 바로 쓰이는지 정리"
         )
 
     if any(keyword in lowered for keyword in ["부족", "보완", "약점", "아쉬운", "없는 경험"]):
         return (
-            "핵심 메시지 -> 부족한 부분을 숨기지 않고 인정하되 보완 속도를 강조 | "
-            "현재 상태 -> 어떤 부분이 약한지 짧게 설명 | "
-            "보완 행동 -> 공부, 프로젝트, 협업, 실습 등 구체 행동 설명 | "
-            "진행 상황 -> 이미 해본 것과 개선된 부분 제시 | "
-            "실무 연결 -> 입사 전후 어떻게 빠르게 메울지 계획으로 마무리"
+            "핵심 메시지: 부족한 부분을 숨기지 않고 인정하되 보완 속도를 강조 | "
+            "현재 상태: 어떤 부분이 약한지 짧게 설명 | "
+            "보완 행동: 공부, 프로젝트, 협업, 실습 등 구체 행동 설명 | "
+            "진행 상황: 이미 해본 것과 개선된 부분 제시 | "
+            "실무 연결: 입사 전후 어떻게 빠르게 메울지 계획으로 마무리"
         )
 
     if any(keyword in lowered for keyword in ["협업", "갈등", "커뮤니케이션", "조율"]):
         return (
-            "핵심 메시지 -> 협업 방식과 조율 역량을 먼저 한 문장으로 제시 | "
-            "상황 -> 어떤 팀/이해관계자가 있었는지 설명 | "
-            "문제 -> 갈등이나 정렬이 필요했던 포인트 제시 | "
-            "행동 -> 내가 한 조율, 커뮤니케이션, 문서화 방식 설명 | "
-            "결과 -> 협업 효율, 일정, 품질에 미친 영향 제시 | "
-            "재사용 포인트 -> 비슷한 상황에서 반복 가능한 방식으로 정리"
+            "핵심 메시지: 협업 방식과 조율 역량을 먼저 한 문장으로 제시 | "
+            "상황: 어떤 팀/이해관계자가 있었는지 설명 | "
+            "문제: 갈등이나 정렬이 필요했던 포인트 제시 | "
+            "행동: 내가 한 조율, 커뮤니케이션, 문서화 방식 설명 | "
+            "결과: 협업 효율, 일정, 품질에 미친 영향 제시 | "
+            "재사용 포인트: 비슷한 상황에서 반복 가능한 방식으로 정리"
         )
 
     if any(keyword in lowered for keyword in ["문제", "해결", "성과", "프로젝트", "개선", "성공", "실패"]):
         return (
-            "핵심 메시지 -> 어떤 문제를 해결한 경험인지 먼저 요약 | "
-            "상황 -> 맡았던 과제와 목표를 짧게 설명 | "
-            "역할 -> 본인이 책임진 범위를 명확히 제시 | "
-            "행동 -> 핵심 의사결정과 실행 단계를 설명 | "
-            "결과 -> 수치나 변화 제시 | "
-            "배운 점 -> 다음 업무에 어떻게 적용할지 연결"
+            "핵심 메시지: 어떤 문제를 해결한 경험인지 먼저 요약 | "
+            "상황: 맡았던 과제와 목표를 짧게 설명 | "
+            "역할: 본인이 책임진 범위를 명확히 제시 | "
+            "행동: 핵심 의사결정과 실행 단계를 설명 | "
+            "결과: 수치나 변화 제시 | "
+            "배운 점: 다음 업무에 어떻게 적용할지 연결"
         )
 
     if any(keyword in lowered for keyword in ["데이터", "지표", "분석", "실험", "측정"]):
         return (
-            "핵심 메시지 -> 데이터 기반으로 의사결정한 경험을 먼저 제시 | "
-            "문제 정의 -> 어떤 지표나 현상을 봤는지 설명 | "
-            "접근 방식 -> 분석, 실험, 비교 방법 제시 | "
-            "결과 -> 수치 변화와 인사이트 설명 | "
-            "직무 연결 -> 데이터 기반으로 일하는 방식을 해당 직무와 연결"
+            "핵심 메시지: 데이터 기반으로 의사결정한 경험을 먼저 제시 | "
+            "문제 정의: 어떤 지표나 현상을 봤는지 설명 | "
+            "접근 방식: 분석, 실험, 비교 방법 제시 | "
+            "결과: 수치 변화와 인사이트 설명 | "
+            "직무 연결: 데이터 기반으로 일하는 방식을 해당 직무와 연결"
         )
 
     return (
-        "핵심 메시지 -> 질문에 대한 결론을 먼저 한 문장으로 제시 | "
-        "상황 -> 배경과 목표 설명 | "
-        "역할 -> 내가 맡은 책임 명확화 | "
-        "행동 -> 핵심 실행 2~3개 설명 | "
-        "결과 -> 수치나 변화 제시 | "
-        f"직무 연결 -> {target_name} 역할에 어떻게 이어지는지 마무리"
+        "핵심 메시지: 질문에 대한 결론을 먼저 한 문장으로 제시 | "
+        "상황: 배경과 목표 설명 | "
+        "역할: 내가 맡은 책임 명확화 | "
+        "행동: 핵심 실행 2~3개 설명 | "
+        "결과: 수치나 변화 제시 | "
+        f"직무 연결: {target_name} 역할에 어떻게 이어지는지 마무리"
     )
 
 
@@ -200,7 +361,7 @@ def _align_answer_frames(interview_questions: list[str], answer_frames: list[str
     aligned: list[str] = []
     for index, question in enumerate(interview_questions):
         if index < len(answer_frames):
-            frame = " ".join(answer_frames[index].split())
+            frame = _coerce_answer_frame_text(answer_frames[index])
             if len(frame) >= 40:
                 aligned.append(frame)
                 continue
@@ -346,11 +507,17 @@ def build_prep_artifacts(settings: Settings, request: PrepArtifactsRequest) -> P
         "- same number of items as interview_questions\n"
         "- each item must correspond to the question at the same index\n"
         "- each item should describe an answer structure using elements like 핵심 메시지, 근거 경험, 성과/수치, 직무 연결, 보완 계획 when relevant\n"
+        "- each item must be plain Korean text, not a nested dict/object serialized as a string\n"
+        "- use labels like 핵심 메시지: ... | 근거 경험: ... | 성과/수치: ...\n"
+        "- do not use braces, quotes around labels, or Python/JSON-looking fragments\n"
         "self_intro_draft rules:\n"
         "- Korean only\n"
         "- 1 paragraph\n"
-        "- 3 to 5 sentences\n"
+        "- around 450 to 550 characters\n"
+        "- write like a polished Korean cover-letter answer, not a memo or checklist\n"
+        "- directly usable as a 500자 자기소개서/지원동기 초안\n"
         "- include support motivation, strongest evidence, role fit, and near-term contribution\n"
+        "- no bullets, no headings, no JSON-like fragments\n"
         f"Target: {target_name}\n"
         f"Preparation summary: {request.preparation_summary}\n"
         f"User background: {request.user_background or 'N/A'}\n"
@@ -361,7 +528,7 @@ def build_prep_artifacts(settings: Settings, request: PrepArtifactsRequest) -> P
         payload: dict[str, Any] = llm_client.generate_json(system_prompt, user_prompt)
         action_items = _coerce_string_list(payload.get("action_items", []), limit=6)
         interview_questions = _coerce_string_list(payload.get("interview_questions", []), limit=5)
-        answer_frames = _coerce_string_list(payload.get("answer_frames", []), limit=5)
+        answer_frames = _coerce_answer_frame_list(payload.get("answer_frames", []), limit=5)
         self_intro_draft = _compact_text(payload.get("self_intro_draft"))
 
         if len(action_items) < 5:

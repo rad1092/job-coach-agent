@@ -26,7 +26,7 @@
     .candidate-card {
       box-sizing: border-box;
       min-height: 316px;
-      border: 1px solid var(--card-border);
+      border: 2px solid transparent;
       border-radius: 22px;
       background: var(--card-bg);
       box-shadow: var(--card-shadow);
@@ -45,15 +45,16 @@
       box-shadow: 0 20px 42px rgba(42, 79, 120, 0.18);
     }
 
-    .candidate-card.is-selected {
-      background: linear-gradient(180deg, rgba(239, 247, 255, 0.98) 0%, rgba(225, 238, 255, 0.96) 100%);
-      border: 1.5px solid rgba(35, 116, 212, 0.42);
-      box-shadow: 0 22px 44px rgba(37, 106, 182, 0.18);
+    .candidate-card.is-selected,
+    .candidate-card.is-pending {
+      background: linear-gradient(180deg, rgba(239, 247, 255, 0.99) 0%, rgba(225, 238, 255, 0.97) 100%);
+      border-color: #166fd0;
+      box-shadow: 0 0 0 2px rgba(22, 111, 208, 0.18), 0 22px 44px rgba(25, 95, 172, 0.2);
     }
 
     .candidate-card:focus-visible {
-      border-color: rgba(35, 116, 212, 0.74);
-      box-shadow: 0 0 0 3px rgba(31, 122, 224, 0.16);
+      border-color: #166fd0;
+      box-shadow: 0 0 0 3px rgba(22, 111, 208, 0.22);
     }
 
     .candidate-grid-meta {
@@ -226,6 +227,8 @@
       reason.textContent = args.why_relevant || ""
 
       const emitSelection = () => {
+        card.classList.add("is-pending")
+        card.setAttribute("aria-pressed", "true")
         setComponentValue(Date.now())
       }
 

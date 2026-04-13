@@ -75,9 +75,7 @@ EXPERIENCE_LEVEL_OPTIONS: tuple[str, ...] = (
     "무관",
     "인턴",
     "신입",
-    "주니어(1~3년)",
-    "미들(4~8년)",
-    "시니어(9년+)",
+    "연차",
 )
 
 PREFERENCE_OPTIONS: tuple[str, ...] = (

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from backend.app.clients.llm_client import build_llm_client
@@ -22,7 +23,15 @@ def _coerce_answer_text(value: Any) -> str:
         compact = " ".join(paragraph.split())
         if compact:
             paragraphs.append(compact)
-    return "\n\n".join(paragraphs)
+    paragraphs = paragraphs[:2]
+    normalized = "\n\n".join(paragraphs).strip()
+    if not normalized:
+        return ""
+
+    sentences = [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", normalized) if sentence.strip()]
+    if len(sentences) > 5:
+        normalized = " ".join(sentences[:5]).strip()
+    return normalized
 
 
 def _coerce_list(value: Any, *, limit: int) -> list[str]:
@@ -118,10 +127,9 @@ def _fallback_reply(run_context: dict[str, Any], request: CoachChatRequest) -> t
 
     skill_gaps = _coerce_list(prepare_summary.get("skill_gaps", []), limit=2)
     answer = (
-        f"질문: {request.question}\n\n"
-        f"{target_name} 기준으로 보면 지금 가장 중요한 준비 방향은 저장된 준비 요약과 실행 항목을 질문 맥락에 맞게 연결해서 설명하는 것입니다. "
-        f"{summary_text}\n\n"
-        "면접이나 지원 준비 질문을 받을 때는 결론을 먼저 말하고, 이어서 관련 경험과 결과, 그리고 해당 공고 업무와의 연결점을 짧게 덧붙이면 훨씬 설득력이 높아집니다."
+        f"핵심은 {target_name}와 내 경험이 왜 맞는지 한 문장 결론부터 분명하게 잡는 것입니다.\n\n"
+        f"지금은 {summary_text}를 바탕으로, 질문에 답할 때 관련 경험 1개와 결과 1개만 붙여 짧게 설명해 보세요. "
+        "마지막에는 해당 업무에 어떻게 바로 기여할지 한 문장으로 닫으면 훨씬 간결하고 설득력 있게 들립니다."
     )
 
     preparation_tips = action_items or [
@@ -160,10 +168,13 @@ def build_coach_chat_response(settings: Settings, request: CoachChatRequest) -> 
             "answer rules:\n"
             "- Korean only\n"
             "- answer the user's latest question directly\n"
-            "- 2 to 4 short paragraphs\n"
-            "- explicitly explain how to prepare next\n"
+            "- 1 to 2 short paragraphs only\n"
+            "- 3 to 5 sentences total\n"
+            "- start with a one-sentence conclusion\n"
+            "- explicitly explain the single most important next step\n"
+            "- keep it concise and do not repeat the full stored context\n"
             "preparation_tips rules:\n"
-            "- 3 to 4 Korean strings\n"
+            "- 2 to 3 Korean strings\n"
             "- immediately usable preparation steps\n"
             "suggested_questions rules:\n"
             "- 2 to 3 Korean strings\n"
@@ -176,7 +187,7 @@ def build_coach_chat_response(settings: Settings, request: CoachChatRequest) -> 
         try:
             payload = llm_client.generate_json(system_prompt, user_prompt)
             answer = _coerce_answer_text(payload.get("answer")) or fallback_answer
-            preparation_tips = _coerce_list(payload.get("preparation_tips", []), limit=4) or fallback_tips
+            preparation_tips = _coerce_list(payload.get("preparation_tips", []), limit=3) or fallback_tips
             suggested_questions = _coerce_list(payload.get("suggested_questions", []), limit=3) or fallback_questions
         except Exception:
             answer, preparation_tips, suggested_questions = fallback_answer, fallback_tips, fallback_questions
