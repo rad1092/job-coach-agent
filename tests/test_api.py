@@ -147,8 +147,10 @@ def test_prep_artifacts_returns_question_aligned_frames(monkeypatch) -> None:
     assert payload["action_items"]
     assert payload["interview_questions"]
     assert payload["answer_frames"]
+    assert payload["self_intro_draft"]
     assert len(payload["interview_questions"]) == len(payload["answer_frames"])
     assert all("핵심 메시지" in frame or "직무 연결" in frame for frame in payload["answer_frames"])
+    assert "예시 백엔드 개발자 공고" in payload["self_intro_draft"]
     assert "document_guidance" not in payload
     assert "prep_missions" not in payload
     assert "schedule_items" not in payload

@@ -335,6 +335,7 @@ async def run_prep_artifacts_graph(settings: Settings, request: PrepArtifactsReq
             "action_items": response.action_items,
             "interview_questions": response.interview_questions,
             "answer_frames": response.answer_frames,
+            "self_intro_draft": response.self_intro_draft,
             "warnings": _merge_messages(state.get("warnings", []), response.warnings),
         }
 
@@ -344,6 +345,7 @@ async def run_prep_artifacts_graph(settings: Settings, request: PrepArtifactsReq
             action_items=state.get("action_items", []),
             interview_questions=state.get("interview_questions", []),
             answer_frames=state.get("answer_frames", []),
+            self_intro_draft=state.get("self_intro_draft", ""),
             warnings=state.get("warnings", []),
         )
         needs_revision, warnings = critique_prep_artifacts(
@@ -411,5 +413,6 @@ async def run_prep_artifacts_graph(settings: Settings, request: PrepArtifactsReq
         action_items=result.get("action_items", []),
         interview_questions=result.get("interview_questions", []),
         answer_frames=result.get("answer_frames", []),
+        self_intro_draft=result.get("self_intro_draft", ""),
         warnings=result.get("warnings", []),
     )

@@ -92,6 +92,40 @@ def _is_detailed_summary(text: str) -> bool:
     return len(" ".join(text.split())) >= 180 and text.count("\n") >= 2
 
 
+def _compact_text(value: str | None) -> str:
+    return " ".join(str(value or "").split())
+
+
+def _clip_text(value: str | None, limit: int = 90) -> str:
+    compact = _compact_text(value)
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 1].rstrip() + "…"
+
+
+def _is_useful_self_intro_draft(text: str) -> bool:
+    return len(_compact_text(text)) >= 90
+
+
+def _fallback_self_intro_draft(request: PrepArtifactsRequest) -> str:
+    target_name = _select_target_name(request.selected_target)
+    target_summary = _clip_text(_select_target_summary(request.selected_target), limit=110)
+    background = _clip_text(request.user_background or request.preparation_summary, limit=110)
+    focus = _clip_text(request.notes or request.preparation_summary, limit=110)
+
+    if not background:
+        background = "실무와 프로젝트 경험을 바탕으로 문제를 구조화하고 실행으로 연결해 온 경험"
+    if not focus:
+        focus = "직무 적합성과 빠른 기여 가능성을 설득력 있게 보여주는 것"
+
+    return (
+        f"안녕하세요. 저는 {background}을 바탕으로 {target_name}에 지원한 지원자입니다. "
+        f"특히 {target_summary}와 맞닿는 업무에서 문제를 빠르게 파악하고 실행 가능한 결과로 연결해 온 점이 제 강점입니다. "
+        f"이번 지원에서는 {focus}를 중심으로 제가 가진 직무 적합성과 협업 역량을 분명하게 보여드리고 싶습니다. "
+        f"입사 후에는 빠르게 업무 맥락을 이해하고, 안정적인 실행력으로 팀의 성과에 기여하겠습니다."
+    )
+
+
 def _question_specific_frame(question: str, target_name: str) -> str:
     lowered = question.lower()
     base = f"{target_name} 직무 맥락과 연결해 마무리합니다."
@@ -270,6 +304,7 @@ def _fallback_artifacts(request: PrepArtifactsRequest, warnings: list[str] | Non
         "아직 부족하다고 느끼는 역량이 있다면 무엇이고, 이를 어떻게 보완해 왔는지 말씀해 주세요.",
     ]
     answer_frames = _align_answer_frames(interview_questions, [], target_name)
+    self_intro_draft = _fallback_self_intro_draft(request)
 
     return PrepArtifactsResponse(
         run_id=request.run_id or "",
@@ -282,6 +317,7 @@ def _fallback_artifacts(request: PrepArtifactsRequest, warnings: list[str] | Non
         ],
         interview_questions=interview_questions,
         answer_frames=answer_frames,
+        self_intro_draft=self_intro_draft,
         warnings=warnings or [],
     )
 
@@ -298,7 +334,7 @@ def build_prep_artifacts(settings: Settings, request: PrepArtifactsRequest) -> P
         "Keep outputs concrete, role-specific, and return valid JSON only."
     )
     user_prompt = (
-        "Create JSON with keys action_items, interview_questions, answer_frames.\n"
+        "Create JSON with keys action_items, interview_questions, answer_frames, self_intro_draft.\n"
         "action_items rules:\n"
         "- 5 to 6 items\n"
         "- detailed Korean strings\n"
@@ -310,6 +346,11 @@ def build_prep_artifacts(settings: Settings, request: PrepArtifactsRequest) -> P
         "- same number of items as interview_questions\n"
         "- each item must correspond to the question at the same index\n"
         "- each item should describe an answer structure using elements like 핵심 메시지, 근거 경험, 성과/수치, 직무 연결, 보완 계획 when relevant\n"
+        "self_intro_draft rules:\n"
+        "- Korean only\n"
+        "- 1 paragraph\n"
+        "- 3 to 5 sentences\n"
+        "- include support motivation, strongest evidence, role fit, and near-term contribution\n"
         f"Target: {target_name}\n"
         f"Preparation summary: {request.preparation_summary}\n"
         f"User background: {request.user_background or 'N/A'}\n"
@@ -321,6 +362,7 @@ def build_prep_artifacts(settings: Settings, request: PrepArtifactsRequest) -> P
         action_items = _coerce_string_list(payload.get("action_items", []), limit=6)
         interview_questions = _coerce_string_list(payload.get("interview_questions", []), limit=5)
         answer_frames = _coerce_string_list(payload.get("answer_frames", []), limit=5)
+        self_intro_draft = _compact_text(payload.get("self_intro_draft"))
 
         if len(action_items) < 5:
             action_items = fallback.action_items
@@ -328,12 +370,15 @@ def build_prep_artifacts(settings: Settings, request: PrepArtifactsRequest) -> P
             interview_questions = fallback.interview_questions
 
         answer_frames = _align_answer_frames(interview_questions, answer_frames, target_name)
+        if not _is_useful_self_intro_draft(self_intro_draft):
+            self_intro_draft = fallback.self_intro_draft
 
         return PrepArtifactsResponse(
             run_id=request.run_id or "",
             action_items=action_items,
             interview_questions=interview_questions,
             answer_frames=answer_frames,
+            self_intro_draft=self_intro_draft,
             warnings=[],
         )
     except Exception:
@@ -356,6 +401,10 @@ def critique_prep_artifacts(
         warnings.append("면접 질문 수와 답변 구조 수가 맞지 않아 질문별 준비가 흐트러질 수 있습니다.")
         return True, warnings
 
+    if not _is_useful_self_intro_draft(response.self_intro_draft):
+        warnings.append("자소서 초안이 너무 짧거나 비어 있어 바로 활용하기 어렵습니다.")
+        return True, warnings
+
     if not any(target_name in item for item in response.action_items):
         warnings.append("실행 항목에 선택한 지원 대상의 맥락이 충분히 드러나지 않습니다.")
 
@@ -376,7 +425,8 @@ def critique_prep_artifacts(
         f"Preparation summary: {request.preparation_summary}\n"
         f"Artifacts: action_items={response.action_items}; "
         f"interview_questions={response.interview_questions}; "
-        f"answer_frames={response.answer_frames}"
+        f"answer_frames={response.answer_frames}; "
+        f"self_intro_draft={response.self_intro_draft}"
     )
 
     try:

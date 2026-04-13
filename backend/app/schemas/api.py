@@ -73,6 +73,7 @@ class PrepArtifactsResponse(BaseModel):
     action_items: list[str]
     interview_questions: list[str]
     answer_frames: list[str]
+    self_intro_draft: str
     warnings: list[str] = Field(default_factory=list)
 
 
