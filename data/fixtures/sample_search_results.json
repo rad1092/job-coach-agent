@@ -1,30 +1,212 @@
 [
   {
-    "title": "NexBridge Careers - Backend Platform Engineer",
-    "url": "https://careers.nexbridge.example/backend-platform-engineer",
-    "snippet": "NexBridge is hiring a backend platform engineer to build API services, data workflows, and internal tools for hiring products.",
-    "content": "Backend platform engineer role focused on Python, API design, SQL, cloud deployment, and collaboration with product and operations teams. Candidates should show project ownership, communication, and service improvement experience.",
-    "tags": ["backend", "platform", "engineer", "hiring", "api", "cloud"]
+    "title": "백엔드 개발자 채용 | 데이터 플랫폼 SaaS - 잡코리아",
+    "url": "https://www.jobkorea.co.kr/Recruit/GI_Read/47001001",
+    "snippet": "IT·플랫폼 SaaS 팀에서 주니어 백엔드 개발자를 찾습니다. 원격·하이브리드와 데이터 중심 문화가 강점입니다.",
+    "content": "Python, FastAPI, SQL 기반 API 개발과 배치 운영을 담당합니다. 주니어(1~3년) 또는 그에 준하는 실전 프로젝트 경험을 우대합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "개발자", "주니어(1~3년)", "원격·하이브리드", "데이터", "중심", "문화", "채용"]
   },
   {
-    "title": "NexBridge Company Overview",
-    "url": "https://www.nexbridge.example/about",
-    "snippet": "NexBridge builds hiring workflow software for teams that need better recruiting operations and candidate communication.",
-    "content": "NexBridge is a software company focused on recruiting workflows, candidate communication, and analytics. The company emphasizes structured execution, cross-functional teamwork, and measurable product outcomes.",
-    "tags": ["company", "recruiting", "software", "culture", "team"]
+    "title": "주니어 백엔드 개발자 | B2B API 플랫폼 - 잡코리아",
+    "url": "https://www.jobkorea.co.kr/Recruit/GI_Read/47001002",
+    "snippet": "플랫폼 API 팀에서 백엔드 개발자를 채용합니다. 데이터 중심 의사결정과 하이브리드 근무를 운영합니다.",
+    "content": "FastAPI와 PostgreSQL 기반 서비스 개발, 운영 자동화, 로그 분석을 맡습니다. 백엔드 개발자 경험 1~3년을 우대합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "개발자", "하이브리드", "데이터 중심 문화", "채용"]
   },
   {
-    "title": "RiverLoop Careers - Product Operations Analyst",
-    "url": "https://jobs.riverloop.example/product-operations-analyst",
-    "snippet": "RiverLoop is hiring a product operations analyst to support metrics reporting, issue tracking, and process improvement.",
-    "content": "Product operations analyst role with responsibilities across reporting, issue triage, stakeholder communication, and process documentation. Candidates should be comfortable with spreadsheets, dashboards, and operational follow-through.",
-    "tags": ["operations", "analyst", "metrics", "reporting", "process"]
+    "title": "Backend Engineer, Data Ops - 잡코리아",
+    "url": "https://www.jobkorea.co.kr/Recruit/GI_Read/47001003",
+    "snippet": "데이터 파이프라인과 사내 플랫폼을 함께 다룰 백엔드 엔지니어를 채용합니다.",
+    "content": "Python API, ETL, 스케줄러 운영, 서비스 지표 관리 업무를 맡습니다. 원격·하이브리드 근무 가능합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "원격·하이브리드", "채용"]
   },
   {
-    "title": "RiverLoop Team and Culture",
-    "url": "https://www.riverloop.example/team",
-    "snippet": "RiverLoop highlights experimentation, cross-team communication, and practical customer problem solving.",
-    "content": "RiverLoop describes a collaborative environment with strong emphasis on clear ownership, customer context, and operational consistency.",
-    "tags": ["team", "culture", "customer", "operations"]
+    "title": "백엔드 개발자 채용 | 멤버십 플랫폼 - 잡코리아",
+    "url": "https://www.jobkorea.co.kr/Recruit/GI_Read/47001004",
+    "snippet": "멤버십 서비스 플랫폼팀에서 백엔드 개발자를 모집합니다. 데이터 팀과 긴밀히 협업합니다.",
+    "content": "API 설계, 결제 연동, 운영 툴 개선, SQL 최적화 경험이 중요합니다. 실무 경력 1~3년이면 좋습니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "개발자", "주니어(1~3년)", "데이터", "채용"]
+  },
+  {
+    "title": "백엔드 개발자 | 글로벌 SaaS 운영 플랫폼 - 잡코리아",
+    "url": "https://www.jobkorea.co.kr/Recruit/GI_Read/47001005",
+    "snippet": "글로벌 SaaS 운영 플랫폼에서 API 개발자를 찾습니다. 하이브리드와 빠른 실행 문화가 특징입니다.",
+    "content": "Python, Redis, AWS 기반 API 운영과 장애 대응 체계 개선을 맡습니다. 주니어급도 지원 가능합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "API", "주니어", "하이브리드", "채용"]
+  },
+  {
+    "title": "Data Backend Developer - 잡코리아",
+    "url": "https://www.jobkorea.co.kr/Recruit/GI_Read/47001006",
+    "snippet": "데이터 제품팀과 함께할 백엔드 개발자 채용. SQL과 Python 기반 서비스를 운영합니다.",
+    "content": "내부 운영 툴과 데이터 추출 API를 개발합니다. 데이터 중심 문화에서 제품팀과 협업합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "Python", "SQL", "채용"]
+  },
+  {
+    "title": "백엔드 개발자 채용 공고 - 사람인",
+    "url": "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=52120001",
+    "snippet": "B2B SaaS 제품 조직에서 백엔드 개발자를 채용합니다. 원격·하이브리드와 데이터 중심 문화가 잘 갖춰져 있습니다.",
+    "content": "FastAPI, MySQL, 배치 파이프라인 운영 경험을 가진 주니어 백엔드 개발자를 찾습니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "개발자", "주니어(1~3년)", "원격·하이브리드", "데이터", "채용"]
+  },
+  {
+    "title": "플랫폼 백엔드 엔지니어 채용 - 사람인",
+    "url": "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=52120002",
+    "snippet": "플랫폼 API와 내부 시스템을 맡을 백엔드 엔지니어를 찾습니다. 하이브리드 근무 가능합니다.",
+    "content": "Python 또는 Java 기반 서비스 경험, SQL 튜닝, 모니터링 도입 경험을 우대합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "하이브리드", "API", "채용"]
+  },
+  {
+    "title": "Backend Engineer | 데이터 서비스 팀 - 사람인",
+    "url": "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=52120003",
+    "snippet": "데이터 서비스 조직에서 API와 데이터 워크플로를 담당할 백엔드 엔지니어 채용.",
+    "content": "Python, Airflow, SQL 기반 데이터 워크플로 운영 경험과 제품 협업 역량이 필요합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "Python", "채용"]
+  },
+  {
+    "title": "주니어 백엔드 개발자 채용 | AI 플랫폼 - 사람인",
+    "url": "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=52120004",
+    "snippet": "AI 플랫폼 사업부에서 주니어 백엔드 개발자를 채용합니다. 데이터 중심 문화가 강한 팀입니다.",
+    "content": "API 서버 개발과 모델 서빙 연동, 서비스 로그 분석을 맡습니다. 1~3년 수준 경험을 우대합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "주니어(1~3년)", "데이터", "문화", "채용"]
+  },
+  {
+    "title": "백엔드 개발자 | 커머스 인프라 - 사람인",
+    "url": "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=52120005",
+    "snippet": "커머스 플랫폼 인프라팀에서 백엔드 개발자를 모집합니다. 원격과 오피스 혼합 근무를 지원합니다.",
+    "content": "주문 API 개발, 캐시 구조 개선, 운영 자동화 업무를 맡습니다. 데이터에 기반한 실험 문화가 있습니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "원격·하이브리드", "데이터 중심", "채용"]
+  },
+  {
+    "title": "Backend Developer, Platform - Wanted",
+    "url": "https://www.wanted.co.kr/wd/245801",
+    "snippet": "IT·플랫폼 제품팀에서 백엔드 개발자를 채용합니다. 원격·하이브리드와 데이터 중심 문화가 잘 정착돼 있습니다.",
+    "content": "Python, Django 또는 FastAPI 경험과 SQL 기반 데이터 처리 역량을 요구합니다. 주니어~미들 포지션입니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "원격·하이브리드", "데이터 중심 문화", "채용"]
+  },
+  {
+    "title": "Backend Engineer - Data Product",
+    "url": "https://www.wanted.co.kr/wd/245802",
+    "snippet": "데이터 프로덕트와 API 플랫폼을 함께 다룰 백엔드 엔지니어를 채용합니다.",
+    "content": "서비스 API, ETL, 대시보드용 데이터 적재 구조를 관리합니다. Python과 SQL, 협업 커뮤니케이션이 중요합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "Python", "SQL", "채용"]
+  },
+  {
+    "title": "주니어 Backend Engineer - Wanted",
+    "url": "https://www.wanted.co.kr/wd/245803",
+    "snippet": "초기 플랫폼 팀에서 주니어 백엔드 엔지니어를 채용합니다. 유연한 하이브리드 근무가 가능합니다.",
+    "content": "FastAPI, AWS, 로그 기반 개선, 운영 자동화 업무가 포함됩니다. 1~3년 수준 프로젝트 경험을 선호합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "주니어(1~3년)", "하이브리드", "채용"]
+  },
+  {
+    "title": "API Platform Backend Developer",
+    "url": "https://www.wanted.co.kr/wd/245804",
+    "snippet": "API 플랫폼 백엔드 개발자를 찾습니다. 데이터 팀과 함께 지표를 운영합니다.",
+    "content": "GraphQL, REST API, 데이터 파이프라인, 고객사 연동 개발을 맡습니다. B2B SaaS 경험을 우대합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "B2B", "채용"]
+  },
+  {
+    "title": "Backend Developer, Commerce Platform",
+    "url": "https://www.wanted.co.kr/wd/245805",
+    "snippet": "커머스 플랫폼에서 백엔드 개발자를 채용합니다. 데이터 기반 실험과 제품 협업을 중시합니다.",
+    "content": "주문/정산 API, 배치, 운영 툴 개발을 맡습니다. Python 또는 Kotlin 경험이 있으면 좋습니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "플랫폼", "채용"]
+  },
+  {
+    "title": "고용24 채용정보 - 백엔드 개발자",
+    "url": "https://www.work24.go.kr/wk/a/b/1200/retriveDtlEmpSrchList.do?joNo=K120032601010101",
+    "snippet": "공공 협력 플랫폼에서 백엔드 개발자를 모집합니다. 데이터 처리와 API 개발 경험을 우대합니다.",
+    "content": "Python 기반 서비스 API 운영, 데이터 정제, 스케줄러 자동화를 담당합니다. 신입~주니어 지원 가능.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "API", "채용"]
+  },
+  {
+    "title": "고용24 채용정보 - 플랫폼 개발자",
+    "url": "https://www.work24.go.kr/wk/a/b/1200/retriveDtlEmpSrchList.do?joNo=K120032601010102",
+    "snippet": "플랫폼 운영팀에서 백엔드 개발자를 채용합니다. 데이터 중심 운영 문화와 협업 체계를 보유하고 있습니다.",
+    "content": "내부 운영 시스템, API 서버, 로그 기반 장애 대응 프로세스를 담당합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "플랫폼", "데이터 중심 문화", "채용"]
+  },
+  {
+    "title": "고용24 채용정보 - 주니어 백엔드 개발",
+    "url": "https://www.work24.go.kr/wk/a/b/1200/retriveDtlEmpSrchList.do?joNo=K120032601010103",
+    "snippet": "주니어 백엔드 개발자를 찾습니다. Python, SQL, 데이터 처리 역량을 중요하게 봅니다.",
+    "content": "1~3년 또는 그에 준하는 프로젝트 경험이 있으면 좋습니다. 하이브리드 협업 방식에 익숙한 분을 선호합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "주니어(1~3년)", "Python", "SQL", "채용"]
+  },
+  {
+    "title": "고용24 채용정보 - 서비스 API 엔지니어",
+    "url": "https://www.work24.go.kr/wk/a/b/1200/retriveDtlEmpSrchList.do?joNo=K120032601010104",
+    "snippet": "서비스 API 엔지니어 채용. 데이터 팀과 함께 백엔드 구조를 개선합니다.",
+    "content": "REST API, 배치 처리, 데이터 적재, 모니터링 체계 개선 업무를 수행합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "API", "데이터", "채용"]
+  },
+  {
+    "title": "고용24 채용정보 - 데이터 백엔드 개발자",
+    "url": "https://www.work24.go.kr/wk/a/b/1200/retriveDtlEmpSrchList.do?joNo=K120032601010105",
+    "snippet": "데이터 백엔드 개발자를 모집합니다. 데이터 파이프라인과 서비스 API를 함께 담당합니다.",
+    "content": "Python, SQL, ETL, 운영 자동화 경험을 우대합니다. 제품/운영 조직과 긴밀히 협업합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "Python", "채용"]
+  },
+  {
+    "title": "백엔드 개발자 채용 - 자소설닷컴",
+    "url": "https://jasoseol.com/recruit/82001",
+    "snippet": "플랫폼 스타트업에서 백엔드 개발자를 채용합니다. 데이터 기반 실행 문화와 빠른 의사결정이 강점입니다.",
+    "content": "서비스 API 개발, 백오피스 운영 도구 개선, 지표 대시보드 연동 업무를 맡습니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "플랫폼", "채용"]
+  },
+  {
+    "title": "주니어 백엔드 개발자 채용 - 자소설닷컴",
+    "url": "https://jasoseol.com/recruit/82002",
+    "snippet": "주니어 백엔드 개발자 채용. 하이브리드 근무와 멘토링 체계를 운영합니다.",
+    "content": "Python API, SQL, 장애 대응, 운영 자동화 경험을 쌓고 싶은 분에게 적합한 역할입니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "주니어(1~3년)", "하이브리드", "채용"]
+  },
+  {
+    "title": "Backend Engineer - 점핏",
+    "url": "https://jumpit.saramin.co.kr/position/22001",
+    "snippet": "개발 조직에서 백엔드 엔지니어를 채용합니다. 데이터 중심 문화, 하이브리드 근무를 지원합니다.",
+    "content": "Kotlin 또는 Python 기반 백엔드 서비스 개발, API 운영, 데이터 지표 관리 업무가 포함됩니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터 중심 문화", "하이브리드", "채용"]
+  },
+  {
+    "title": "주니어 백엔드 개발자 - 점핏",
+    "url": "https://jumpit.saramin.co.kr/position/22002",
+    "snippet": "주니어 백엔드 개발자를 모집합니다. 플랫폼 서비스와 데이터 파이프라인을 함께 경험할 수 있습니다.",
+    "content": "REST API, 배치, 데이터 정합성 검증, 모니터링 개선 업무를 수행합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "주니어(1~3년)", "데이터", "채용"]
+  },
+  {
+    "title": "백엔드 개발자 채용 - 캐치",
+    "url": "https://www.catch.co.kr/NCS/RecruitInfoDetails/41001",
+    "snippet": "IT·플랫폼 기업에서 백엔드 개발자를 채용합니다. 원격·하이브리드 환경과 데이터 중심 문화가 마련돼 있습니다.",
+    "content": "Python, Java, SQL 기반 API 개발과 운영 최적화 업무를 맡습니다. 제품팀과 빠르게 협업합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "원격·하이브리드", "데이터 중심 문화", "채용"]
+  },
+  {
+    "title": "플랫폼 백엔드 엔지니어 - 캐치",
+    "url": "https://www.catch.co.kr/NCS/RecruitInfoDetails/41002",
+    "snippet": "플랫폼 백엔드 엔지니어 채용. 데이터 서비스와 운영 자동화 경험을 살릴 수 있습니다.",
+    "content": "API 서버 운영, 데이터 워크플로, 장애 대응 체계 개선을 담당합니다. 주니어도 지원 가능합니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "주니어", "채용"]
+  },
+  {
+    "title": "데이터 백엔드 개발자 - 캐치",
+    "url": "https://www.catch.co.kr/NCS/RecruitInfoDetails/41003",
+    "snippet": "데이터 조직과 함께할 백엔드 개발자를 찾습니다. 플랫폼 지표와 파이프라인을 함께 다룹니다.",
+    "content": "Python, SQL, Airflow, API 기반 데이터 서비스 운영 경험이 있으면 좋습니다.",
+    "tags": ["IT·플랫폼", "개발", "백엔드", "데이터", "Python", "채용"]
+  },
+  {
+    "title": "플랫폼 채용공고 모아보기 - 잡코리아",
+    "url": "https://www.jobkorea.co.kr/Search/?stext=%EB%B0%B1%EC%97%94%EB%93%9C",
+    "snippet": "백엔드 개발자 채용 검색 결과 페이지입니다.",
+    "content": "잡코리아 검색 결과 페이지입니다.",
+    "tags": ["검색", "목록"]
+  },
+  {
+    "title": "플랫폼 기업 리뷰 - 잡플래닛",
+    "url": "https://www.jobplanet.co.kr/companies/999999/reviews/platform",
+    "snippet": "기업 문화와 연봉 정보를 확인하세요.",
+    "content": "리뷰 페이지입니다.",
+    "tags": ["기업리뷰", "연봉"]
   }
 ]
