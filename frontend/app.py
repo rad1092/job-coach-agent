@@ -549,7 +549,7 @@ def _normalize_generated_field_text(value: Any, *, context: str) -> str:
 
 
 def _paragraphs_markdown(text: str) -> str:
-    normalized_text = _naturalize_ui_text(text)
+    normalized_text = _markdown_export_text(text)
     paragraphs = [" ".join(paragraph.split()) for paragraph in normalized_text.split("\n\n")]
     paragraphs = [paragraph for paragraph in paragraphs if paragraph]
     if not paragraphs:
@@ -564,7 +564,7 @@ def _list_markdown(values: list[str], *, numbered: bool = False) -> str:
     lines: list[str] = []
     for index, value in enumerate(values, start=1):
         marker = f"{index}." if numbered else "-"
-        lines.append(f"{marker} {_format_structured_field_text(value)}")
+        lines.append(f"{marker} {_markdown_export_inline_text(_format_structured_field_text(value))}")
     return "\n".join(lines)
 
 
@@ -572,11 +572,30 @@ def _checklist_markdown(values: list[str]) -> str:
     if not values:
         return "_아직 생성된 내용이 없습니다._"
 
-    return "\n".join(f"- [ ] {_format_structured_field_text(value)}" for value in values)
+    return "\n".join(f"- [ ] {_markdown_export_inline_text(_format_structured_field_text(value))}" for value in values)
 
 
 def _markdown_table_cell(value: Any) -> str:
-    return _compact_naturalized_text(value).replace("|", "\\|") or "-"
+    return _markdown_export_inline_text(value).replace("|", "\\|") or "-"
+
+
+def _markdown_export_text(value: Any) -> str:
+    text = _naturalize_ui_text(value)
+    if not text:
+        return ""
+
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    normalized = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", normalized)
+    normalized = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r"\1 <\2>", normalized)
+    normalized = re.sub(r"<img[^>]*>", "", normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r"(^|\n)\s*[.·,;:]+\s+", r"\1", normalized)
+    normalized = re.sub(r"\n{3,}", "\n\n", normalized)
+    return normalized.strip()
+
+
+def _markdown_export_inline_text(value: Any) -> str:
+    text = _markdown_export_text(value)
+    return " ".join(text.split()).strip()
 
 
 def _markdown_kv_table(rows: list[tuple[str, Any]]) -> str:
@@ -586,6 +605,17 @@ def _markdown_kv_table(rows: list[tuple[str, Any]]) -> str:
     lines = ["| 항목 | 내용 |", "| --- | --- |"]
     for label, value in rows:
         lines.append(f"| {label} | {_markdown_table_cell(value)} |")
+    return "\n".join(lines)
+
+
+def _markdown_kv_list(rows: list[tuple[str, Any]]) -> str:
+    if not rows:
+        return "_아직 생성된 내용이 없습니다._"
+
+    lines: list[str] = []
+    for label, value in rows:
+        rendered = _markdown_export_inline_text(value) or "없음"
+        lines.append(f"- **{label}**: {rendered}")
     return "\n".join(lines)
 
 
@@ -617,8 +647,8 @@ def _interview_markdown(questions: list[str], answer_frames: list[str]) -> str:
             dedent(
                 f"""
                 ### 면접 질문 {index:02d}
-                - 질문: {clean_question or '아직 준비된 질문이 없습니다.'}
-                - 답변 가이드: {clean_guide}
+                - 질문: {_markdown_export_inline_text(clean_question or '아직 준비된 질문이 없습니다.')}
+                - 답변 가이드: {_markdown_export_inline_text(clean_guide)}
                 """
             ).strip()
         )
@@ -674,83 +704,96 @@ def _build_download_report_markdown(
     else:
         career_text = experience_level or "미정"
     link_text = f"[공고 바로가기]({source_url})" if source_url else "없음"
+    summary_excerpt = _truncate_text(_markdown_export_inline_text(target.get("summary", "")), 180)
 
-    return dedent(
-        f"""
-        # 지원 전략 리포트
-
-        > 지원 공고, 분석 리포트, 자소서 초안, 면접 대비, 실행 로드맵을 한 번에 정리한 노션형 마크다운 문서입니다.
-        >
-        > 생성 시각: {generated_at}
-
-        ## 문서 한눈에 보기
-        {_markdown_kv_table([
-            ("지원 대상", title),
-            ("직무 요약", target.get("summary", "선택한 지원 대상 정보가 없습니다.")),
-            ("탐색 기준", _search_summary_line()),
-            ("출처", source_label),
-            ("원본 링크", source_url or "없음"),
-        ])}
-
-        ## 사용자 입력 요약
-        {_markdown_kv_table([
-            ("산업", payload.get("industry", "")),
-            ("직군", payload.get("job_family", "")),
-            ("직무", payload.get("job_role", "")),
-            ("경력 수준", career_text),
-            ("선호 조건", payload.get("preferences", "") or "없음"),
-            ("배경 설명", payload.get("user_background", "") or "없음"),
-            ("추가 메모", payload.get("notes", "") or "없음"),
-        ])}
-
-        ---
-
-        ## 1. 지원 대상 요약
-        > 공고명: **{_compact_naturalized_text(title)}**
-        >
-        > 출처: **{_compact_naturalized_text(source_label)}**
-        >
-        > 링크: {link_text}
-
-        {_paragraphs_markdown(str(target.get("summary", "선택한 지원 대상 정보가 없습니다.")))}
-
-        ---
-
-        ## 2. 분석 리포트
-        ### 핵심 진단
-        {_paragraphs_markdown(str(prepare_summary.get("preparation_summary", "")))}
-
-        ### 준비 포인트
-        {_checklist_markdown(list(prepare_summary.get("preparation_points", [])))}
-
-        ### 보완 포인트
-        {_checklist_markdown(list(prepare_summary.get("skill_gaps", [])))}
-
-        ---
-
-        ## 3. 자소서 초안
-        > 바로 복사해 자기소개서 초안으로 다듬기 쉬운 문단형 초안입니다.
-
-        {_paragraphs_markdown(str(artifacts.get("self_intro_draft", "")))}
-
-        ---
-
-        ## 4. 합격 로드맵
-        {_list_markdown(list(artifacts.get("action_items", [])), numbered=True)}
-
-        ---
-
-        ## 5. 면접 대비
-        {_interview_markdown(list(artifacts.get("interview_questions", [])), list(artifacts.get("answer_frames", [])))}
-
-        ---
-
-        ## 6. 노션 재정리용 프롬프트
-        ```text
-        {_download_report_prompt(title)}
-        ```
-        """
-    ).strip()
+    sections = [
+        "# 지원 전략 리포트",
+        "",
+        "> 지원 공고, 분석 리포트, 자소서 초안, 면접 대비, 실행 로드맵을 한 번에 정리한 노션형 마크다운 문서입니다.",
+        ">",
+        f"> 생성 시각: {generated_at}",
+        "",
+        "## 문서 한눈에 보기",
+        "",
+        _markdown_kv_list(
+            [
+                ("지원 대상", title),
+                ("직무 요약", summary_excerpt or "선택한 지원 대상 정보가 없습니다."),
+                ("탐색 기준", _search_summary_line()),
+                ("출처", source_label),
+                ("원본 링크", source_url or "없음"),
+            ]
+        ),
+        "",
+        "## 사용자 입력 요약",
+        "",
+        _markdown_kv_list(
+            [
+                ("산업", payload.get("industry", "")),
+                ("직군", payload.get("job_family", "")),
+                ("직무", payload.get("job_role", "")),
+                ("경력 수준", career_text),
+                ("선호 조건", payload.get("preferences", "") or "없음"),
+                ("배경 설명", payload.get("user_background", "") or "없음"),
+                ("추가 메모", payload.get("notes", "") or "없음"),
+            ]
+        ),
+        "",
+        "---",
+        "",
+        "## 1. 지원 대상 요약",
+        "",
+        f"- **공고명**: {_markdown_export_inline_text(title)}",
+        f"- **출처**: {_markdown_export_inline_text(source_label)}",
+        f"- **링크**: {link_text}",
+        "",
+        _paragraphs_markdown(str(target.get("summary", "선택한 지원 대상 정보가 없습니다."))),
+        "",
+        "---",
+        "",
+        "## 2. 분석 리포트",
+        "",
+        "### 핵심 진단",
+        "",
+        _paragraphs_markdown(str(prepare_summary.get("preparation_summary", ""))),
+        "",
+        "### 준비 포인트",
+        "",
+        _checklist_markdown(list(prepare_summary.get("preparation_points", []))),
+        "",
+        "### 보완 포인트",
+        "",
+        _checklist_markdown(list(prepare_summary.get("skill_gaps", []))),
+        "",
+        "---",
+        "",
+        "## 3. 자소서 초안",
+        "",
+        "> 바로 복사해 자기소개서 초안으로 다듬기 쉬운 문단형 초안입니다.",
+        "",
+        _paragraphs_markdown(str(artifacts.get("self_intro_draft", ""))),
+        "",
+        "---",
+        "",
+        "## 4. 합격 로드맵",
+        "",
+        _list_markdown(list(artifacts.get("action_items", [])), numbered=True),
+        "",
+        "---",
+        "",
+        "## 5. 면접 대비",
+        "",
+        _interview_markdown(list(artifacts.get("interview_questions", [])), list(artifacts.get("answer_frames", []))),
+        "",
+        "---",
+        "",
+        "## 6. 노션 재정리용 프롬프트",
+        "",
+        "```text",
+        _download_report_prompt(title),
+        "```",
+    ]
+    return "\n".join(sections).strip()
 
 
 def _generate_dashboard_outputs(selected_target: dict[str, Any] | None, *, spinner_text: str) -> None:

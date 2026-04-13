@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -70,6 +71,16 @@ def persist_run_artifact(data_dir: Path, run_id: str, name: str, payload: dict[s
     path = run_dir / f"{name}.json"
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
+
+
+def clear_runtime_storage(data_dir: Path) -> None:
+    db_path = _db_path(data_dir)
+    if db_path.exists():
+        db_path.unlink()
+
+    run_dir = data_dir / "runs"
+    if run_dir.exists():
+        shutil.rmtree(run_dir)
 
 
 def persist_stage_snapshot(

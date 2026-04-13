@@ -21,7 +21,12 @@ from backend.app.schemas.api import (
     PrepareSummaryResponse,
 )
 from backend.app.services.coach_chat import build_coach_chat_response
-from backend.app.storage.session_store import load_chat_messages, persist_run_artifact, persist_stage_snapshot
+from backend.app.storage.session_store import (
+    clear_runtime_storage,
+    load_chat_messages,
+    persist_run_artifact,
+    persist_stage_snapshot,
+)
 
 router = APIRouter()
 
@@ -39,6 +44,7 @@ async def explore(request: ExploreRequest) -> ExploreResponse:
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    clear_runtime_storage(settings.data_dir)
     response_payload = response.model_dump()
     persist_run_artifact(settings.data_dir, response.run_id, "explore", response_payload)
     persist_stage_snapshot(
