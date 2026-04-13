@@ -29,6 +29,26 @@
 - Tavily Search API
 - SQLite
 
+## PPT용 아키텍처 요약
+
+### 영역별 기술 스택
+
+| 영역 | 기술 스택 | 역할 | 대표 파일 |
+| --- | --- | --- | --- |
+| 프론트엔드 UI | `Streamlit`, `httpx`, 커스텀 HTML/JS 컴포넌트 | 입력 폼, 후보 선택 카드, 결과 탭, Markdown 다운로드, 준비 코치 UI를 제공 | `frontend/app.py`, `frontend/components/candidate_card_selector/index.html` |
+| API 레이어 | `FastAPI`, `Pydantic` | 프론트와 런타임 사이의 공개 API를 제공하고 요청/응답 스키마를 검증 | `backend/app/main.py`, `backend/app/api/routes.py`, `backend/app/schemas/api.py` |
+| 에이전트 런타임 | `LangGraph`, `TypedDict` 상태 관리 | 탐색, 준비 요약, 산출물 생성을 단계별 그래프로 실행 | `backend/app/runtime/graphs.py`, `backend/app/runtime/state.py` |
+| 탐색 레이어 | `Tavily`, `httpx`, `BeautifulSoup4` | 채용 공고 검색, 본문 수집, 공고 URL 필터링, 신뢰도 점수 계산 | `backend/app/clients/search_client.py`, `backend/app/clients/page_fetcher.py`, `backend/app/services/exploration.py`, `backend/app/core/taxonomy.py` |
+| 생성 레이어 | `OpenAI Responses API` | 준비 요약서, 실행 항목, 면접 질문, 답변 구조, 자소서 초안, 코치 답변 생성 | `backend/app/clients/llm_client.py`, `backend/app/services/preparation.py`, `backend/app/services/coach_chat.py` |
+| 저장 레이어 | `SQLite`, `JSON snapshot` | 실행 이력, 단계별 응답, 채팅 기록을 저장하고 재로딩 | `backend/app/storage/session_store.py`, `data/runs/<run_id>/` |
+| 실행/검증 | `uv`, `uvicorn`, `pytest`, `PowerShell` | 로컬 실행, 스모크 테스트, API 흐름 검증 | `pyproject.toml`, `scripts/run_backend.ps1`, `scripts/run_frontend.ps1`, `scripts/smoke_real.ps1`, `tests/` |
+
+### 한 줄 요약
+
+- 이 프로젝트는 `Streamlit` 화면에서 입력을 받고, `FastAPI`가 이를 받아 `LangGraph` 기반 취업 코치 에이전트를 실행한 뒤, 결과를 `SQLite + JSON`으로 저장하는 구조입니다.
+- 외부 연동은 탐색용 `Tavily`, 생성용 `OpenAI Responses API`로 분리되어 있고, 둘 다 없을 때는 `fixture` 모드로 로컬 데모가 가능하도록 설계되어 있습니다.
+- 프론트는 단일 `Streamlit` 앱이지만, 후보 선택 UX는 별도 HTML/JavaScript 컴포넌트로 분리해 카드형 선택 경험을 제공합니다.
+
 ## 요구 사항
 
 - Python 3.12
@@ -195,6 +215,42 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke_real.ps1 -Industry "마
 - `scripts/run_frontend.ps1`: 프론트 실행 스크립트
 - `scripts/smoke_real.ps1`: API 흐름 점검 스크립트
 - `tests/`: API 및 준비 로직 테스트
+
+## 현재 에이전트 구조
+
+### 런타임 공통 구조
+
+- 모든 런타임 단계는 `AgentRuntimeState` 하나를 공유하며, 여기에 입력값, 후보 목록, 선택 대상, 준비 요약, 산출물, 경고, 재시도 상태를 누적합니다.
+- 핵심 런타임은 `run_explore_graph`, `run_prepare_summary_graph`, `run_prep_artifacts_graph`의 3개 그래프로 분리되어 있습니다.
+- `coach-chat`은 별도 `LangGraph` 노드는 아니며, 저장된 실행 문맥과 대화 이력을 읽어 후속 답변을 생성하는 보조 에이전트 역할을 합니다.
+
+### 단계별 에이전트 흐름
+
+| 단계 | 진입 API | 내부 구조 | 핵심 역할 |
+| --- | --- | --- | --- |
+| 1. 탐색 에이전트 | `POST /explore` | `normalize_input -> plan_search -> collect_evidence -> judge_evidence -> finalize` | 입력값을 정규화하고, 검색 쿼리를 만들고, 채용 공고를 수집한 뒤, 근거가 부족하면 재탐색합니다. |
+| 2. 준비 요약 에이전트 | `POST /prepare-summary` | `check_selection -> synthesize_preparation_summary -> finalize` | 선택된 공고가 있는지 확인하고, 준비 요약서와 준비 포인트, 보완 포인트를 생성합니다. |
+| 3. 산출물 에이전트 | `POST /prep-artifacts` | `generate_artifacts -> critic_artifacts -> regenerate/finalize` | 실행 항목, 예상 면접 질문, 답변 구조, 자소서 초안을 만들고, 너무 일반적이면 한 번 더 재생성합니다. |
+| 4. 준비 코치 에이전트 | `POST /coach-chat` | 저장된 `run_context` + 최근 대화 이력 기반 응답 | 이전 탐색/요약/산출물과 채팅 이력을 불러와 후속 질문에 코치형 답변을 제공합니다. |
+
+### 에이전트별 책임 분리
+
+- 탐색 에이전트는 `Tavily` 또는 `fixture` 검색 결과를 사용하고, 직무 키워드와 직접 공고 URL 규칙으로 후보를 추립니다.
+- 준비 요약/산출물 에이전트는 `OpenAI Responses API`를 우선 사용하되, 실패 시에도 즉시 보여줄 수 있는 fallback 문구를 함께 갖고 있습니다.
+- 준비 코치 에이전트는 기존 실행 컨텍스트를 압축해 프롬프트에 넣고, 답변·준비 팁·후속 질문을 함께 반환합니다.
+- 저장 레이어는 각 단계 결과를 `SQLite`와 `data/runs/<run_id>/*.json`에 함께 남겨, 후속 대화와 결과 재사용이 가능하도록 합니다.
+
+### 개발 운영용 `.agents` 구조
+
+- `.agents/contracts/current-status.md`: 현재 구현 상태와 바로 다음 작업을 기록하는 문서
+- `.agents/contracts/implementation-roadmap.md`: 구현 단계와 종료 조건을 기록하는 로드맵 문서
+- `.agents/contracts/project-policy.md`: 문서/주석/스크립트 작성 정책을 고정하는 문서
+
+### 발표용 메시지 예시
+
+- 프론트는 `Streamlit`, 백엔드는 `FastAPI`, 에이전트 오케스트레이션은 `LangGraph`로 나눈 전형적인 Python 단일 저장소 구조입니다.
+- 서비스 관점에서는 `탐색 에이전트 -> 준비 요약 에이전트 -> 산출물 에이전트 -> 준비 코치 에이전트`의 4단계 흐름으로 이해하면 됩니다.
+- 운영 관점에서는 `fixture` fallback, `critic` 재생성, `SQLite + JSON` 이중 저장으로 데모 안정성과 추적 가능성을 확보한 구조입니다.
 
 ## 트러블슈팅
 
