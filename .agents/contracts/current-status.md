@@ -6,7 +6,7 @@
 ## 현재 단계
 
 - 현재 단계: `실제 키 검증 완료, 백엔드 보정 준비`
-- 기준 제품 문서: `C:\brainstorming\job_coach_onepager.md`
+- 기준 제품 문서: `C:\job-coach-agent\README.md`
 - 작성 정책 문서: `C:\brainstorming\.agents\contracts\project-policy.md`
 
 ## 완료된 것

@@ -27,6 +27,7 @@ class AgentRuntimeState(TypedDict, total=False):
     action_items: list[str]
     interview_questions: list[str]
     answer_frames: list[str]
+    self_intro_draft: str
     warnings: list[str]
     next_action: Literal["continue", "retry_search", "regenerate_artifacts", "finalize"]
     retry_count: int
