@@ -31,6 +31,63 @@
 
 ## PPT용 아키텍처 요약
 
+```mermaid
+flowchart LR
+    subgraph UI[Frontend - Streamlit]
+        F1[사용자 입력 폼]
+        F2[지원 대상 후보 선택 카드]
+        F3[결과 탭 + 준비 코치 채팅]
+    end
+
+    subgraph API[Backend - FastAPI]
+        A1[/POST /explore/]
+        A2[/POST /prepare-summary/]
+        A3[/POST /prep-artifacts/]
+        A4[/POST /coach-chat/]
+    end
+
+    subgraph Runtime[LangGraph Runtime]
+        R1[탐색 그래프\n입력정규화 -> 검색계획 -> 근거수집 -> 품질판단 -> 종료]
+        R2[요약 그래프\n선택검증 -> 준비요약 생성 -> 종료]
+        R3[산출물 그래프\n초안생성 -> 품질평가 -> 재생성/종료]
+    end
+
+    subgraph External[External/Providers]
+        E1[Tavily 검색]
+        E2[OpenAI 응답 API]
+        E3[Fixture 모드]
+    end
+
+    subgraph Store[Persistence]
+        S1[(SQLite\ndata/job_coach.db)]
+        S2[(JSON 스냅샷\ndata/runs/<run_id>/*.json)]
+    end
+
+    F1 --> A1
+    F2 --> A2
+    F2 --> A3
+    F3 --> A4
+
+    A1 --> R1
+    A2 --> R2
+    A3 --> R3
+
+    R1 --> E1
+    R1 -.fallback.-> E3
+    R2 --> E2
+    R2 -.fallback.-> E3
+    R3 --> E2
+    R3 -.fallback.-> E3
+
+    A1 --> S1
+    A2 --> S1
+    A3 --> S1
+    A4 --> S1
+    A1 --> S2
+    A2 --> S2
+    A3 --> S2
+```
+
 ### 영역별 기술 스택
 
 | 영역 | 기술 스택 | 역할 | 대표 파일 |
