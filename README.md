@@ -240,11 +240,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke_real.ps1 -Industry "마
 - 준비 코치 에이전트는 기존 실행 컨텍스트를 압축해 프롬프트에 넣고, 답변·준비 팁·후속 질문을 함께 반환합니다.
 - 저장 레이어는 각 단계 결과를 `SQLite`와 `data/runs/<run_id>/*.json`에 함께 남겨, 후속 대화와 결과 재사용이 가능하도록 합니다.
 
-### 개발 운영용 `.agents` 구조
-
-- `.agents/contracts/current-status.md`: 현재 구현 상태와 바로 다음 작업을 기록하는 문서
-- `.agents/contracts/implementation-roadmap.md`: 구현 단계와 종료 조건을 기록하는 로드맵 문서
-- `.agents/contracts/project-policy.md`: 문서/주석/스크립트 작성 정책을 고정하는 문서
 
 ### 발표용 메시지 예시
 
